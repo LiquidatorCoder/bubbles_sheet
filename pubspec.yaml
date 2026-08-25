@@ -2,13 +2,25 @@ name: bubbles_sheet
 description: >-
   Pill-shouldered, iOS-26-style modal bottom sheets for Flutter — detents,
   edge-flush corners, sticky CTAs and a themeable chrome, built on smooth_sheets.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/LiquidatorCoder/bubbles_sheet
 issue_tracker: https://github.com/LiquidatorCoder/bubbles_sheet/issues
 
+screenshots:
+  - description: "A content-sized sheet, floating above the dimmed screen with a sticky pill CTA."
+    path: doc/screenshots/01-fit.png
+  - description: "A half-height detent with a scrolling body, flush against the bottom edge."
+    path: doc/screenshots/02-detents.png
+  - description: "A text action in the header's trailing slot, and a CTA driven by the body's state."
+    path: doc/screenshots/03-action.png
+  - description: "The same chrome on the dark palette."
+    path: doc/screenshots/04-dark.png
+
 environment:
   sdk: ^3.11.1
-  flutter: ">=3.27.0"
+  # 3.44 is where FlutterView.displayCornerRadii lands, which is what resolves
+  # the flush-corner radius on Android 12+ without the host supplying one.
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:

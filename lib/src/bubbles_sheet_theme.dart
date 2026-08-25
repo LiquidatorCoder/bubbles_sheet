@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -152,7 +154,7 @@ class BubblesSheetMetrics {
     this.headerSlotWidth = 44,
     this.closeButtonSize = 36,
     this.dragHandleSize = const Size(36, 4),
-    this.deviceCornerRadius = 0,
+    this.deviceCornerRadius,
   });
 
   /// How far the floating sheet sits in from the screen edges. Lerps to zero as
@@ -190,13 +192,33 @@ class BubblesSheetMetrics {
   /// Size of the grab handle.
   final Size dragHandleSize;
 
-  /// The device's own bottom screen-corner radius, in logical pixels.
+  /// Overrides the device's bottom screen-corner radius, in logical pixels.
   ///
   /// The sheet's bottom corners lerp up to this as it goes flush, so the curve
-  /// continues into the bezel instead of cutting across it. Flutter can't read
-  /// it, so the host app supplies it — e.g. from `package:screen_corner_radius`.
-  /// Left at 0 the sheet simply squares off at the bottom edge.
-  final double deviceCornerRadius;
+  /// continues into the bezel instead of cutting across it.
+  ///
+  /// Leave it null — the default — and the radius is read from the display
+  /// itself via `FlutterView.displayCornerRadii`, so the effect works with no
+  /// wiring at all. Set it to force a value: a design that wants a specific
+  /// curve, a test that needs a fixed one, or a platform that reports nothing
+  /// useful. Zero squares the bottom edge off.
+  final double? deviceCornerRadius;
+
+  /// The bottom corner radius to draw with, in logical pixels.
+  ///
+  /// [deviceCornerRadius] when set, otherwise the display's own bottom radius.
+  /// `dart:ui` reports those in *physical* pixels, so they are converted here —
+  /// skipping that step would hand a 3x device a radius three times too large.
+  double resolveDeviceCornerRadius(BuildContext context) {
+    final override = deviceCornerRadius;
+    if (override != null) return override;
+    final view = View.maybeOf(context);
+    final radii = view?.displayCornerRadii;
+    if (view == null || radii == null) return 0;
+    final ratio = view.devicePixelRatio;
+    if (ratio <= 0) return 0;
+    return math.max(radii.bottomLeft, radii.bottomRight) / ratio;
+  }
 
   /// Total height of the header chrome: grab handle, its padding, and the
   /// header row.
@@ -217,6 +239,7 @@ class BubblesSheetMetrics {
     double? closeButtonSize,
     Size? dragHandleSize,
     double? deviceCornerRadius,
+    bool resetDeviceCornerRadius = false,
   }) {
     return BubblesSheetMetrics(
       inset: inset ?? this.inset,
@@ -229,7 +252,7 @@ class BubblesSheetMetrics {
       headerSlotWidth: headerSlotWidth ?? this.headerSlotWidth,
       closeButtonSize: closeButtonSize ?? this.closeButtonSize,
       dragHandleSize: dragHandleSize ?? this.dragHandleSize,
-      deviceCornerRadius: deviceCornerRadius ?? this.deviceCornerRadius,
+      deviceCornerRadius: resetDeviceCornerRadius ? null : (deviceCornerRadius ?? this.deviceCornerRadius),
     );
   }
 
