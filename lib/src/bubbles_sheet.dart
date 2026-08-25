@@ -742,12 +742,17 @@ class _CloseButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(color: palette.closeButtonBackground, shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 14, color: palette.closeButtonIcon),
+        // Center, so the slot's constraints stop here. A tight parent — which
+        // is what NavigationToolbar hands its leading slot — otherwise wins
+        // over Container's own width/height and inflates the circle.
+        child: Center(
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(color: palette.closeButtonBackground, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 14, color: palette.closeButtonIcon),
+          ),
         ),
       ),
     );
