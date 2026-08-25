@@ -16,3 +16,4 @@ export 'src/bubbles_paged_sheet.dart';
 export 'src/bubbles_sheet.dart';
 export 'src/bubbles_sheet_actions.dart';
 export 'src/bubbles_sheet_theme.dart';
+export 'src/device_corner_radius.dart';

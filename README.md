@@ -100,19 +100,33 @@ Two things are worth calling out:
 itself, so it can't fire a buzz an app's own "haptics off" setting has disabled.
 Wire `BubblesSheetHaptics` to whatever façade you already have.
 
-**The flush corners are automatic on Android 12+, and need a value elsewhere.**
-The radius is read from the display via `FlutterView.displayCornerRadii`, which
-`dart:ui` populates *only* on Android API 31+. On iOS — and on older Android, and
-everywhere else — it is `null`, so hand the radius in yourself, e.g. from
-[`screen_corner_radius`](https://pub.dev/packages/screen_corner_radius):
+**The flush corners need no setup, on iOS or Android.** The radius comes from
+the display: `FlutterView.displayCornerRadii` where `dart:ui` provides it
+(Android API 31+), and otherwise
+[`screen_corner_radius`](https://pub.dev/packages/screen_corner_radius), which
+this package depends on so you don't have to wire it up.
+
+Two consequences worth knowing:
+
+- **This is a plugin package**, so it supports **Android and iOS only**. On web
+  or desktop the lookup simply yields `0` and the corners square off.
+- On iOS there is no public API for the screen radius, so `screen_corner_radius`
+  reads a private `UIScreen` property by key. That is a normal, widely-used
+  technique, but it is Apple-private, and shipping it is your call — pass
+  `deviceCornerRadius` yourself if you would rather not.
+
+Override it any time you want a particular curve, or a fixed one in a test:
 
 ```dart
-metrics: BubblesSheetMetrics(deviceCornerRadius: myResolvedRadius),
+metrics: BubblesSheetMetrics(deviceCornerRadius: 44),
 ```
 
-An explicit value always wins over the display lookup, so it is also how you
-force a particular curve or pin one in a test. Passing `0` squares the bottom
-edge off; leaving it unset on a platform that reports nothing does the same.
+An explicit value always wins. Passing `0` squares the bottom edge off.
+
+The lookup is a platform channel, so it resolves just after startup. A sheet
+opened in that window paints square corners for a frame and then repaints with
+the real curve; call `BubblesDeviceCornerRadius.ensureResolved()` during startup
+if you want the answer ready before the first sheet.
 
 ## Paged sheets
 

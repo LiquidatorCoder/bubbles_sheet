@@ -16,8 +16,6 @@ dependencies:
     sdk: flutter
   bubbles_sheet:
     path: ../
-  # Only needed off Android 12+, where dart:ui reports no display radii.
-  screen_corner_radius: ^3.0.0
 
 dev_dependencies:
   flutter_test:

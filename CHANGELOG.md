@@ -1,3 +1,19 @@
+## 0.3.0
+
+- The flush bottom corners now resolve themselves on **iOS as well as Android**.
+  The package depends on
+  [`screen_corner_radius`](https://pub.dev/packages/screen_corner_radius) for the
+  platforms `dart:ui` doesn't answer for, so there is nothing to wire up.
+- **This makes bubbles_sheet a plugin package: Android and iOS only.** On web and
+  desktop the radius resolves to `0` and the corners square off. If you need
+  those platforms, pin `0.2.0` and pass `deviceCornerRadius` yourself.
+- On iOS the radius comes from a private `UIScreen` property, since Apple
+  publishes no API for it. Pass `deviceCornerRadius` explicitly if you would
+  rather not ship that.
+- The lookup is asynchronous. A sheet opened before it lands repaints once the
+  radius arrives; `BubblesDeviceCornerRadius.ensureResolved()` lets you start it
+  during app startup instead.
+
 ## 0.2.0
 
 **Breaking:** requires Flutter 3.44, and `BubblesSheetMetrics.deviceCornerRadius`

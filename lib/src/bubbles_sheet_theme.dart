@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
+import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -197,27 +196,18 @@ class BubblesSheetMetrics {
   /// The sheet's bottom corners lerp up to this as it goes flush, so the curve
   /// continues into the bezel instead of cutting across it.
   ///
-  /// Leave it null — the default — and the radius is read from the display
-  /// itself via `FlutterView.displayCornerRadii`, so the effect works with no
-  /// wiring at all. Set it to force a value: a design that wants a specific
-  /// curve, a test that needs a fixed one, or a platform that reports nothing
-  /// useful. Zero squares the bottom edge off.
+  /// Leave it null — the default — and the radius is resolved from the display
+  /// for you, on both iOS and Android. See [BubblesDeviceCornerRadius]. Set it
+  /// to force a value: a design that wants a specific curve, or a test that
+  /// needs a fixed one. Zero squares the bottom edge off.
   final double? deviceCornerRadius;
 
   /// The bottom corner radius to draw with, in logical pixels.
   ///
-  /// [deviceCornerRadius] when set, otherwise the display's own bottom radius.
-  /// `dart:ui` reports those in *physical* pixels, so they are converted here —
-  /// skipping that step would hand a 3x device a radius three times too large.
+  /// [deviceCornerRadius] when set, otherwise whatever
+  /// [BubblesDeviceCornerRadius] can resolve from the display.
   double resolveDeviceCornerRadius(BuildContext context) {
-    final override = deviceCornerRadius;
-    if (override != null) return override;
-    final view = View.maybeOf(context);
-    final radii = view?.displayCornerRadii;
-    if (view == null || radii == null) return 0;
-    final ratio = view.devicePixelRatio;
-    if (ratio <= 0) return 0;
-    return math.max(radii.bottomLeft, radii.bottomRight) / ratio;
+    return deviceCornerRadius ?? BubblesDeviceCornerRadius.resolve(context);
   }
 
   /// Total height of the header chrome: grab handle, its padding, and the
