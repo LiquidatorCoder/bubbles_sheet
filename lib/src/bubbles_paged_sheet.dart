@@ -65,6 +65,7 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
                 children: [
                   SizedBox(
                     width: metrics.headerSlotWidth,
+                    height: metrics.headerRowHeight,
                     child: showClose
                         ? BubblesPagedSheetCircleButton(
                             icon: theme.closeIcon,
@@ -136,12 +137,16 @@ class BubblesPagedSheetCircleButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        width: theme.metrics.closeButtonSize,
-        height: theme.metrics.closeButtonSize,
-        decoration: BoxDecoration(color: palette.closeButtonBackground, shape: BoxShape.circle),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 14, color: palette.closeButtonIcon),
+      // Center for the same reason as the modal header's close button: the
+      // enclosing slot's constraints must not decide the circle's size.
+      child: Center(
+        child: Container(
+          width: theme.metrics.closeButtonSize,
+          height: theme.metrics.closeButtonSize,
+          decoration: BoxDecoration(color: palette.closeButtonBackground, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 14, color: palette.closeButtonIcon),
+        ),
       ),
     );
   }

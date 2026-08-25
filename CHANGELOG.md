@@ -1,3 +1,16 @@
+## 0.3.1
+
+- Fixed the close button rendering at different sizes in the two headers. The
+  modal sheet drew it at 44pt and the paged sheet at 36pt, which showed up as an
+  obvious jump when opening one sheet after the other.
+
+  `NavigationToolbar` — which the modal header uses so it can offer a trailing
+  action — gives its leading slot a *tight* height, and a tight parent
+  constraint beats `Container`'s own `width`/`height`. The circle is now
+  centered inside the slot, so `closeButtonSize` decides its size in both
+  headers. The tap target stays a full 44pt.
+- Screenshots retaken, since they showed the oversized button.
+
 ## 0.3.0
 
 - The flush bottom corners now resolve themselves on **iOS as well as Android**.
