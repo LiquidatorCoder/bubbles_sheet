@@ -23,8 +23,8 @@ screenshots:
 
 environment:
   sdk: ^3.11.1
-  # 3.44 is where FlutterView.displayCornerRadii lands. It is what lets the
-  # flush-corner effect work with no wiring, so it is the floor.
+  # 3.44 is where FlutterView.displayCornerRadii lands, which is what resolves
+  # the flush-corner radius on Android 12+ without the host supplying one.
   flutter: ">=3.44.0"
 
 dependencies:
