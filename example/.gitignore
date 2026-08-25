@@ -1,0 +1,6 @@
+# The example is an app, but its lockfile is not something consumers should
+# inherit — it would pin them to whatever versions resolved the day it was
+# published. Left out of the repo and out of the published archive.
+pubspec.lock
+.dart_tool/
+build/

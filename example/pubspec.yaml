@@ -3,7 +3,9 @@ description: Demonstrates bubbles_sheet's detents, chrome slots and theming.
 publish_to: "none"
 version: 1.0.0
 
-resolution: workspace
+# Deliberately NOT a workspace member. This pubspec ships inside the published
+# archive, and `resolution: workspace` there means `pub get` fails for anyone who
+# downloads the example — there is no workspace root above it on their disk.
 
 environment:
   sdk: ^3.11.1
