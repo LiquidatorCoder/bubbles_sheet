@@ -1,0 +1,22 @@
+# Mirrors the host app's rules so a file reads the same on either side of the
+# package boundary.
+include: package:very_good_analysis/analysis_options.10.2.0.yaml
+
+linter:
+  rules:
+    # Same call as the host app: every type and every field that carries
+    # information is documented, but a doc comment on each constructor and each
+    # self-evident field is noise the reader has to skim past.
+    public_member_api_docs: false
+    # `lerp` is a static interpolator, not an alternative constructor — the same
+    # shape Color.lerp and TextStyle.lerp have.
+    prefer_constructors_over_static_methods: false
+    lines_longer_than_80_chars: false
+    flutter_style_todos: false
+    cascade_invocations: false
+    avoid_redundant_argument_values: false
+    prefer_int_literals: false
+    diagnostic_describe_all_properties: false
+    sort_pub_dependencies: false
+    discarded_futures: false
+    unawaited_futures: false

@@ -1,0 +1,27 @@
+name: bubbles_sheet
+description: >-
+  Pill-shouldered, iOS-26-style modal bottom sheets for Flutter — detents,
+  edge-flush corners, sticky CTAs and a themeable chrome, built on smooth_sheets.
+version: 0.1.0
+# TODO(pub): point these at the package's public repository before publishing.
+# repository: https://github.com/<owner>/bubbles_sheet
+# issue_tracker: https://github.com/<owner>/bubbles_sheet/issues
+
+# Resolved as part of the arch_wallet pub workspace: one `flutter pub get` at the
+# repo root fetches this package's dependencies too, and one pubspec.lock pins
+# them. Drop this line if the package ever moves to its own repository.
+resolution: workspace
+
+environment:
+  sdk: ^3.11.1
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  smooth_sheets: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.2.0

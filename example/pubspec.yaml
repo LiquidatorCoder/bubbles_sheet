@@ -1,0 +1,24 @@
+name: bubbles_sheet_example
+description: Demonstrates bubbles_sheet's detents, chrome slots and theming.
+publish_to: "none"
+version: 1.0.0
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.1
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bubbles_sheet:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.2.0
+
+flutter:
+  uses-material-design: true
