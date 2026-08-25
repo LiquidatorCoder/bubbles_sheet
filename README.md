@@ -3,6 +3,10 @@
 Pill-shouldered, iOS-26-style modal bottom sheets for Flutter, built on
 [`smooth_sheets`](https://pub.dev/packages/smooth_sheets).
 
+| Content-sized | Three detents | Header action + live CTA | Dark chrome |
+| --- | --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/LiquidatorCoder/bubbles_sheet/main/doc/screenshots/01-fit.png" width="200" alt="A content-sized sheet titled Sort by, floating above a dimmed screen with a pill Done button pinned to the bottom"> | <img src="https://raw.githubusercontent.com/LiquidatorCoder/bubbles_sheet/main/doc/screenshots/02-detents.png" width="200" alt="A half-height sheet titled Tokens showing a scrolling list"> | <img src="https://raw.githubusercontent.com/LiquidatorCoder/bubbles_sheet/main/doc/screenshots/03-action.png" width="200" alt="A sheet titled Pick a number with a Clear action in the header and an Apply button that enables once a number is chosen"> | <img src="https://raw.githubusercontent.com/LiquidatorCoder/bubbles_sheet/main/doc/screenshots/04-dark.png" width="200" alt="The same sheet chrome rendered in the dark palette"> |
+
 Every sheet gets the same chrome — a grab handle, a leading close button, a
 centered title, an optional trailing text action, and a primary CTA that stays
 pinned to the bottom while the body scrolls. The sheet floats on an inset above
@@ -96,15 +100,19 @@ Two things are worth calling out:
 itself, so it can't fire a buzz an app's own "haptics off" setting has disabled.
 Wire `BubblesSheetHaptics` to whatever façade you already have.
 
-**`deviceCornerRadius` has to be supplied.** Flutter can't read the physical
-screen radius, so the flush-corner effect is off until you pass it — e.g. from
+**The flush corners are automatic on Android 12+, and need a value elsewhere.**
+The radius is read from the display via `FlutterView.displayCornerRadii`, which
+`dart:ui` populates *only* on Android API 31+. On iOS — and on older Android, and
+everywhere else — it is `null`, so hand the radius in yourself, e.g. from
 [`screen_corner_radius`](https://pub.dev/packages/screen_corner_radius):
 
 ```dart
 metrics: BubblesSheetMetrics(deviceCornerRadius: myResolvedRadius),
 ```
 
-Left at `0` the sheet simply squares off against the bottom edge.
+An explicit value always wins over the display lookup, so it is also how you
+force a particular curve or pin one in a test. Passing `0` squares the bottom
+edge off; leaving it unset on a platform that reports nothing does the same.
 
 ## Paged sheets
 

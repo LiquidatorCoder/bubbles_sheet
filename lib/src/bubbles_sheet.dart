@@ -412,7 +412,7 @@ class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
     final palette = theme.paletteFor(dark: widget.dark);
-    final deviceR = theme.metrics.deviceCornerRadius;
+    final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
     final topRadius = Radius.circular(theme.metrics.topRadius);
     return AnimatedBuilder(
       animation: _repaint,
