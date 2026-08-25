@@ -24,17 +24,22 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
   final bool showClose;
   final bool showBack;
 
-  /// Geometry for [preferredSize], which is read before this widget builds and
-  /// so can't look the theme up from a [BuildContext]. Pass the same metrics the
-  /// app registers on [BubblesSheetThemeData] if they aren't the defaults.
+  /// This header's geometry.
+  ///
+  /// It comes from the widget rather than the ambient theme because
+  /// [preferredSize] is read before there is a [BuildContext] to look a theme
+  /// up from, and the size the header reserves has to be the size it paints.
+  /// Reading geometry from the theme in `build` while reserving the default
+  /// here would let the two drift apart silently — the same wart [AppBar] has
+  /// with `AppBarTheme.toolbarHeight`. Colours, icons, type and haptics still
+  /// come from the theme; only measurements live here.
+  ///
+  /// Pass the metrics registered on [BubblesSheetThemeData] if they aren't the
+  /// defaults.
   final BubblesSheetMetrics metrics;
 
   @override
-  Size get preferredSize {
-    return Size.fromHeight(
-      metrics.dragHandleSize.height + 10 + metrics.headerRowHeight + metrics.headerPadding.vertical,
-    );
-  }
+  Size get preferredSize => Size.fromHeight(metrics.headerHeight);
 
   @override
   Widget build(BuildContext context) {
@@ -45,15 +50,20 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(padding: EdgeInsets.only(top: 6, bottom: 4), child: BubblesPagedSheetDragHandle()),
           Padding(
-            padding: theme.metrics.headerPadding,
+            padding: const EdgeInsets.only(top: 6, bottom: 4),
+            // Sized from this header's metrics, not the theme's: the handle's
+            // height is part of what preferredSize reserved above.
+            child: BubblesPagedSheetDragHandle(size: metrics.dragHandleSize),
+          ),
+          Padding(
+            padding: metrics.headerPadding,
             child: SizedBox(
-              height: theme.metrics.headerRowHeight,
+              height: metrics.headerRowHeight,
               child: Row(
                 children: [
                   SizedBox(
-                    width: theme.metrics.headerRowHeight,
+                    width: metrics.headerSlotWidth,
                     child: showClose
                         ? BubblesPagedSheetCircleButton(
                             icon: theme.closeIcon,
@@ -82,7 +92,7 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
                       ),
                     ),
                   ),
-                  SizedBox(width: theme.metrics.headerRowHeight),
+                  SizedBox(width: metrics.headerSlotWidth),
                 ],
               ),
             ),
@@ -94,12 +104,16 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
 }
 
 class BubblesPagedSheetDragHandle extends StatelessWidget {
-  const BubblesPagedSheetDragHandle({super.key});
+  const BubblesPagedSheetDragHandle({this.size, super.key});
+
+  /// Overrides the themed handle size. [BubblesPagedSheetHeader] passes its own
+  /// so the handle matches the height the header reserved.
+  final Size? size;
 
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
-    final size = theme.metrics.dragHandleSize;
+    final size = this.size ?? theme.metrics.dragHandleSize;
     return Container(
       width: size.width,
       height: size.height,

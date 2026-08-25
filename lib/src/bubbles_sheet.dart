@@ -567,10 +567,12 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize {
     final metrics = theme.metrics;
     final hasHeaderRow = title != null || showCloseButton || trailingAction != null;
-    final handleH = (showDragHandle || hasHeaderRow) ? metrics.dragHandleSize.height + 10 : 0.0;
-    final rowH = hasHeaderRow ? metrics.headerRowHeight + metrics.headerPadding.vertical : 0.0;
-    final h = handleH + rowH;
-    return Size.fromHeight(h <= 0 ? 16 : h);
+    if (!showDragHandle && !hasHeaderRow) return const Size.fromHeight(16);
+    // The handle strip is drawn (or reserved) whenever any chrome shows, so the
+    // full formula applies unless the row itself is absent.
+    return Size.fromHeight(
+      hasHeaderRow ? metrics.headerHeight : metrics.dragHandleSize.height + 10,
+    );
   }
 
   @override
@@ -582,7 +584,7 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
     final hasHeaderRow = hasTitle || showCloseButton || action != null;
     final showAnything = showDragHandle || hasHeaderRow;
     if (!showAnything) return const SizedBox(height: 16);
-    final slotWidth = metrics.headerRowHeight;
+    final slotWidth = metrics.headerSlotWidth;
 
     return Material(
       type: MaterialType.transparency,

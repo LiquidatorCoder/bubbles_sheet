@@ -149,6 +149,7 @@ class BubblesSheetMetrics {
     this.ctaPadding = const EdgeInsets.fromLTRB(20, 12, 20, 16),
     this.footerPadding = const EdgeInsets.fromLTRB(20, 12, 20, 12),
     this.headerRowHeight = 44,
+    this.headerSlotWidth = 44,
     this.closeButtonSize = 36,
     this.dragHandleSize = const Size(36, 4),
     this.deviceCornerRadius = 0,
@@ -176,6 +177,13 @@ class BubblesSheetMetrics {
   /// Height of the header row.
   final double headerRowHeight;
 
+  /// Width reserved for the header's leading and trailing slots.
+  ///
+  /// Separate from [closeButtonSize] so the tap target and the space the title
+  /// centres between can be tuned independently, and separate from
+  /// [headerRowHeight] because a taller header is not a wider one.
+  final double headerSlotWidth;
+
   /// Diameter of the circular close button.
   final double closeButtonSize;
 
@@ -190,6 +198,13 @@ class BubblesSheetMetrics {
   /// Left at 0 the sheet simply squares off at the bottom edge.
   final double deviceCornerRadius;
 
+  /// Total height of the header chrome: grab handle, its padding, and the
+  /// header row.
+  ///
+  /// One formula, so a `PreferredSizeWidget` header reserves exactly what it
+  /// goes on to paint.
+  double get headerHeight => dragHandleSize.height + 10 + headerRowHeight + headerPadding.vertical;
+
   BubblesSheetMetrics copyWith({
     double? inset,
     double? topInset,
@@ -198,6 +213,7 @@ class BubblesSheetMetrics {
     EdgeInsets? ctaPadding,
     EdgeInsets? footerPadding,
     double? headerRowHeight,
+    double? headerSlotWidth,
     double? closeButtonSize,
     Size? dragHandleSize,
     double? deviceCornerRadius,
@@ -210,6 +226,7 @@ class BubblesSheetMetrics {
       ctaPadding: ctaPadding ?? this.ctaPadding,
       footerPadding: footerPadding ?? this.footerPadding,
       headerRowHeight: headerRowHeight ?? this.headerRowHeight,
+      headerSlotWidth: headerSlotWidth ?? this.headerSlotWidth,
       closeButtonSize: closeButtonSize ?? this.closeButtonSize,
       dragHandleSize: dragHandleSize ?? this.dragHandleSize,
       deviceCornerRadius: deviceCornerRadius ?? this.deviceCornerRadius,
@@ -227,6 +244,7 @@ class BubblesSheetMetrics {
         other.ctaPadding == ctaPadding &&
         other.footerPadding == footerPadding &&
         other.headerRowHeight == headerRowHeight &&
+        other.headerSlotWidth == headerSlotWidth &&
         other.closeButtonSize == closeButtonSize &&
         other.dragHandleSize == dragHandleSize &&
         other.deviceCornerRadius == deviceCornerRadius;
@@ -241,6 +259,7 @@ class BubblesSheetMetrics {
     ctaPadding,
     footerPadding,
     headerRowHeight,
+    headerSlotWidth,
     closeButtonSize,
     dragHandleSize,
     deviceCornerRadius,
