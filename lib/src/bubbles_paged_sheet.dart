@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
+import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -238,18 +239,24 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
       startOffset: const SheetOffset.proportionalToViewport(0.6),
       endOffset: const SheetOffset.proportionalToViewport(0.9),
     );
-    _repaint = Listenable.merge([_flushAnim, widget.controller]);
+    // BubblesDeviceCornerRadius resolves over a platform channel, so a sheet
+    // opened before that lands would paint square corners and never revisit
+    // them. Merging its listenable in — once, here, never per build — makes the
+    // surface repaint the moment the radius arrives.
+    _repaint = Listenable.merge([_flushAnim, widget.controller, BubblesDeviceCornerRadius.listenable]);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
     final palette = theme.light;
-    final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
     final topRadius = Radius.circular(theme.metrics.topRadius);
     return AnimatedBuilder(
       animation: _repaint,
       builder: (context, _) {
+        // Inside the builder, not captured outside it — see the note in
+        // bubbles_sheet.dart: the radius can land after the first paint.
+        final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
         final t = _flushAnim.value;
         final lerped = lerpDouble(deviceR - theme.metrics.inset, deviceR, t)!.clamp(0.0, deviceR);
         // Only zero the radius once the sheet is actually flush with the

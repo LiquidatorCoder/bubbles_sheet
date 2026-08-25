@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
+import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -405,18 +406,30 @@ class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
   @override
   void initState() {
     super.initState();
-    _repaint = Listenable.merge([widget.flushAnim, widget.controller]);
+    // BubblesDeviceCornerRadius resolves over a platform channel, so a sheet
+    // opened before that lands would paint square corners and never revisit
+    // them. Merging its listenable in — once, here, never per build — makes the
+    // surface repaint the moment the radius arrives.
+    _repaint = Listenable.merge([
+      widget.flushAnim,
+      widget.controller,
+      BubblesDeviceCornerRadius.listenable,
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
     final palette = theme.paletteFor(dark: widget.dark);
-    final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
     final topRadius = Radius.circular(theme.metrics.topRadius);
     return AnimatedBuilder(
       animation: _repaint,
       builder: (context, _) {
+        // Resolved inside the builder, not captured outside it: the radius can
+        // arrive after this surface first painted, and _repaint only re-runs
+        // this closure. Reading it in the outer build would pin the first
+        // answer — 0, before the channel replies — for the sheet's whole life.
+        final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
         final m = widget.controller.metrics;
         final atMax = m != null && m.offset >= m.maxOffset - 0.5;
         final t = widget.flushAnim.value;

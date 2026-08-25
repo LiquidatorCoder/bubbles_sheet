@@ -1,21 +1,7 @@
 import 'package:bubbles_sheet/bubbles_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:screen_corner_radius/screen_corner_radius.dart';
 
-/// The device's bottom screen-corner radius, or null when we couldn't read one.
-///
-/// bubbles_sheet resolves this itself on Android 12+, so this whole dance is
-/// only here for the platforms `dart:ui` says nothing about — iOS included.
-double? deviceCornerRadius;
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final radii = await ScreenCornerRadius.get();
-  if (radii != null) {
-    deviceCornerRadius = radii.bottomLeft > radii.bottomRight ? radii.bottomLeft : radii.bottomRight;
-  }
-  runApp(const ExampleApp());
-}
+void main() => runApp(const ExampleApp());
 
 class ExampleApp extends StatelessWidget {
   const ExampleApp({super.key});
@@ -27,12 +13,9 @@ class ExampleApp extends StatelessWidget {
       theme: ThemeData.light(useMaterial3: true).copyWith(
         scaffoldBackgroundColor: const Color(0xFFFAF9F5),
         colorScheme: const ColorScheme.light(primary: Color(0xFFD97757), surface: Color(0xFFFAF9F5)),
-        // Passing the radius makes the sheet's bottom corners concentric with
-        // the bezel everywhere. Drop it and Android 12+ still works, because the
-        // package reads the display itself there.
-        extensions: [
-          BubblesSheetThemeData(metrics: BubblesSheetMetrics(deviceCornerRadius: deviceCornerRadius)),
-        ],
+        // Nothing to configure. The sheet resolves the display's own corner
+        // radius, so its bottom corners stay concentric with the bezel.
+        extensions: const [BubblesSheetThemeData()],
       ),
       home: const _Home(),
     );
