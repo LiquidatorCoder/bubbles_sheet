@@ -6,11 +6,6 @@ version: 0.1.0
 repository: https://github.com/LiquidatorCoder/bubbles_sheet
 issue_tracker: https://github.com/LiquidatorCoder/bubbles_sheet/issues
 
-# Resolved as part of the arch_wallet pub workspace: one `flutter pub get` at the
-# repo root fetches this package's dependencies too, and one pubspec.lock pins
-# them. Drop this line if the package ever moves to its own repository.
-resolution: workspace
-
 environment:
   sdk: ^3.11.1
   flutter: ">=3.27.0"
