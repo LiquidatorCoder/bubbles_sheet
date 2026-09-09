@@ -336,6 +336,7 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
     this.closeIcon = Icons.close_rounded,
     this.backIcon = Icons.arrow_back_ios_new_rounded,
     this.ctaBuilder = buildDefaultCta,
+    this.closeBuilder = buildDefaultClose,
     this.haptics = const BubblesSheetHaptics(),
   });
 
@@ -364,6 +365,10 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
   /// button drawn from the ambient [ColorScheme].
   final BubblesSheetCtaWidgetBuilder ctaBuilder;
 
+  /// How the header's close control renders. Defaults to
+  /// [buildDefaultClose], the package's own circle.
+  final BubblesSheetCloseWidgetBuilder closeBuilder;
+
   final BubblesSheetHaptics haptics;
 
   /// The registered theme, or the package defaults when none is registered.
@@ -384,6 +389,7 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
     IconData? closeIcon,
     IconData? backIcon,
     BubblesSheetCtaWidgetBuilder? ctaBuilder,
+    BubblesSheetCloseWidgetBuilder? closeBuilder,
     BubblesSheetHaptics? haptics,
   }) {
     return BubblesSheetThemeData(
@@ -395,6 +401,7 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
       closeIcon: closeIcon ?? this.closeIcon,
       backIcon: backIcon ?? this.backIcon,
       ctaBuilder: ctaBuilder ?? this.ctaBuilder,
+      closeBuilder: closeBuilder ?? this.closeBuilder,
       haptics: haptics ?? this.haptics,
     );
   }
@@ -414,6 +421,7 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
       closeIcon: snapped.closeIcon,
       backIcon: snapped.backIcon,
       ctaBuilder: snapped.ctaBuilder,
+      closeBuilder: snapped.closeBuilder,
       haptics: snapped.haptics,
     );
   }
@@ -430,12 +438,23 @@ class BubblesSheetThemeData extends ThemeExtension<BubblesSheetThemeData> {
         other.closeIcon == closeIcon &&
         other.backIcon == backIcon &&
         other.ctaBuilder == ctaBuilder &&
+        other.closeBuilder == closeBuilder &&
         other.haptics == haptics;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(light, dark, metrics, titleStyle, actionStyle, closeIcon, backIcon, ctaBuilder, haptics);
+  int get hashCode => Object.hash(
+    light,
+    dark,
+    metrics,
+    titleStyle,
+    actionStyle,
+    closeIcon,
+    backIcon,
+    ctaBuilder,
+    closeBuilder,
+    haptics,
+  );
 }
 
 const TextStyle _defaultTitleStyle = TextStyle(
@@ -446,6 +465,73 @@ const TextStyle _defaultTitleStyle = TextStyle(
 );
 
 const TextStyle _defaultActionStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2);
+
+/// The header's close control: the glyph, what pressing it does, and the
+/// chrome it is being drawn against.
+///
+/// Handed to a [BubblesSheetCloseWidgetBuilder] so a host can draw the control
+/// with its own button component. Dismissal stays the package's — a host that
+/// had to close the sheet itself is a host that can forget to.
+@immutable
+class BubblesSheetClose {
+  const BubblesSheetClose({
+    required this.icon,
+    required this.onPressed,
+    required this.palette,
+    required this.size,
+  });
+
+  /// [BubblesSheetThemeData.closeIcon], passed through so a builder that only
+  /// wants a different button need not restate the glyph.
+  final IconData icon;
+
+  /// Dismisses the sheet, haptics and all.
+  final VoidCallback onPressed;
+
+  /// The chrome for *this* sheet's brightness. A sheet picks its palette from
+  /// its own `dark` flag rather than the ambient theme, so a builder cannot
+  /// work this out from context.
+  final BubblesSheetPalette palette;
+
+  /// [BubblesSheetMetrics.closeButtonSize]. A builder is free to ignore it,
+  /// but the header reserved a slot on the assumption it would not.
+  final double size;
+}
+
+/// Renders the header's close control. Set on
+/// [BubblesSheetThemeData.closeBuilder].
+///
+/// The counterpart to [BubblesSheetCtaWidgetBuilder]: the package's circle is
+/// a reasonable default, but an app with a button component of its own should
+/// not be stuck with one control in the sheet that no design system drew.
+typedef BubblesSheetCloseWidgetBuilder = Widget Function(BuildContext context, BubblesSheetClose close);
+
+/// The package's stock close control: a filled circle carrying the close
+/// glyph, sized and coloured from the sheet's own chrome.
+///
+/// Replace it via [BubblesSheetThemeData.closeBuilder] to use your own button.
+Widget buildDefaultClose(BuildContext context, BubblesSheetClose close) {
+  return Semantics(
+    button: true,
+    label: 'Close',
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: close.onPressed,
+      // Center, so the slot's constraints stop here. A tight parent — which is
+      // what NavigationToolbar hands its leading slot — otherwise wins over
+      // Container's own width/height and inflates the circle.
+      child: Center(
+        child: Container(
+          width: close.size,
+          height: close.size,
+          decoration: BoxDecoration(color: close.palette.closeButtonBackground, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Icon(close.icon, size: 14, color: close.palette.closeButtonIcon),
+        ),
+      ),
+    ),
+  );
+}
 
 /// The package's stock primary CTA: a full-width pill drawn from the ambient
 /// [ColorScheme], so it inherits an app's brand colour without any wiring.
@@ -505,7 +591,12 @@ class _DefaultCtaButtonState extends State<_DefaultCtaButton> {
                 ],
                 Text(
                   widget.cta.title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: -0.2, color: foreground),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: foreground,
+                  ),
                 ),
               ],
             ),

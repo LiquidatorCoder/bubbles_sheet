@@ -69,7 +69,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(tester.getSize(circleOf(find.byType(BubblesPagedSheetCircleButton))), expected);
+    // Found by its label, not its widget type: the close control goes through
+    // BubblesSheetThemeData.closeBuilder now, and what matters here is that
+    // both headers still draw the same circle at the same size.
+    expect(tester.getSize(circleOf(find.bySemanticsLabel('Close'))), expected);
   });
 
   testWidgets('the back button matches it too', (tester) async {
@@ -91,7 +94,8 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => ElevatedButton(
-              onPressed: () => showBubblesSheet<void>(context, title: 'Sort by', builder: (_) => const Text('body')),
+              onPressed: () =>
+                  showBubblesSheet<void>(context, title: 'Sort by', builder: (_) => const Text('body')),
               child: const Text('open'),
             ),
           ),
