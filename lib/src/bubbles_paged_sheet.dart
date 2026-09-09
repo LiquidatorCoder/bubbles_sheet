@@ -67,12 +67,19 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
                     width: metrics.headerSlotWidth,
                     height: metrics.headerRowHeight,
                     child: showClose
-                        ? BubblesPagedSheetCircleButton(
-                            icon: theme.closeIcon,
-                            onTap: () {
-                              theme.haptics.onDismiss?.call();
-                              Navigator.of(context, rootNavigator: true).pop();
-                            },
+                        ? theme.closeBuilder(
+                            context,
+                            BubblesSheetClose(
+                              icon: theme.closeIcon,
+                              onPressed: () {
+                                theme.haptics.onDismiss?.call();
+                                Navigator.of(context, rootNavigator: true).pop();
+                              },
+                              // A paged sheet has no `dark` flag of its own;
+                              // its chrome has always been the light palette.
+                              palette: theme.light,
+                              size: theme.metrics.closeButtonSize,
+                            ),
                           )
                         : showBack
                         ? BubblesPagedSheetCircleButton(
@@ -119,7 +126,10 @@ class BubblesPagedSheetDragHandle extends StatelessWidget {
     return Container(
       width: size.width,
       height: size.height,
-      decoration: BoxDecoration(color: theme.light.dragHandle, borderRadius: BorderRadius.circular(size.height / 2)),
+      decoration: BoxDecoration(
+        color: theme.light.dragHandle,
+        borderRadius: BorderRadius.circular(size.height / 2),
+      ),
     );
   }
 }
@@ -276,7 +286,11 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
           bottomRight: bottomR,
         );
         return DecoratedBox(
-          decoration: BoxDecoration(color: palette.surface, borderRadius: shape, boxShadow: palette.surfaceShadow),
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: shape,
+            boxShadow: palette.surfaceShadow,
+          ),
           child: ClipRRect(borderRadius: shape, child: widget.child),
         );
       },

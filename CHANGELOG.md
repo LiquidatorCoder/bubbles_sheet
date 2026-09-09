@@ -1,3 +1,19 @@
+## 0.4.0
+
+- Added `BubblesSheetThemeData.closeBuilder`, the counterpart to `ctaBuilder`.
+  The header's close control was the one piece of sheet chrome an app could not
+  draw itself: it could be recoloured, resized and given a different glyph, but
+  it was always the package's circle. An app with its own button component ended
+  up with a single control in the sheet that no design system drew.
+
+  The builder is handed a `BubblesSheetClose` carrying the glyph, the dismissal
+  callback, *this* sheet's palette — a sheet picks its chrome from its own `dark`
+  flag, so a builder cannot work that out from context — and `closeButtonSize`.
+  Dismissal stays the package's, so a replaced control cannot forget to close.
+
+  Both headers honour it. The default, `buildDefaultClose`, is the same circle
+  as before, so this is additive: no existing sheet changes.
+
 ## 0.3.1
 
 - Fixed the close button rendering at different sizes in the two headers. The

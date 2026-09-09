@@ -4,7 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   // Pumps an app whose single button opens a sheet built by [open].
-  Future<void> pumpHost(WidgetTester tester, void Function(BuildContext) open, {BubblesSheetThemeData? theme}) async {
+  Future<void> pumpHost(
+    WidgetTester tester,
+    void Function(BuildContext) open, {
+    BubblesSheetThemeData? theme,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: theme == null ? null : ThemeData.light().copyWith(extensions: [theme]),
@@ -171,6 +175,58 @@ void main() {
     expect(find.text('custom:Apply'), findsOneWidget);
   });
 
+  testWidgets('closeBuilder replaces the stock circle', (tester) async {
+    await pumpHost(
+      tester,
+      (context) => showBubblesSheet<void>(context, builder: (_) => const Text('body')),
+      theme: BubblesSheetThemeData(
+        closeBuilder: (context, close) =>
+            TextButton(onPressed: close.onPressed, child: const Text('custom close')),
+      ),
+    );
+
+    expect(find.text('custom close'), findsOneWidget);
+    // The stock circle's label goes with it, rather than being spoken over
+    // whatever the host put there.
+    expect(find.bySemanticsLabel('Close'), findsNothing);
+  });
+
+  testWidgets('a replaced close still dismisses the sheet', (tester) async {
+    await pumpHost(
+      tester,
+      (context) => showBubblesSheet<void>(context, builder: (_) => const Text('body')),
+      theme: BubblesSheetThemeData(
+        closeBuilder: (context, close) =>
+            TextButton(onPressed: close.onPressed, child: const Text('custom close')),
+      ),
+    );
+    expect(find.text('body'), findsOneWidget);
+
+    await tester.tap(find.text('custom close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('body'), findsNothing);
+  });
+
+  testWidgets("the close builder is handed this sheet's own palette", (tester) async {
+    late BubblesSheetClose seen;
+    await pumpHost(
+      tester,
+      (context) => showBubblesSheet<void>(context, dark: true, builder: (_) => const Text('body')),
+      theme: BubblesSheetThemeData(
+        closeBuilder: (context, close) {
+          seen = close;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+
+    // dark: true, so the dark chrome — not the ambient theme's brightness and
+    // not the light palette the paged header happens to use.
+    expect(seen.palette.closeButtonBackground, BubblesSheetPalette.charcoal.closeButtonBackground);
+    expect(seen.size, const BubblesSheetMetrics().closeButtonSize);
+  });
+
   testWidgets('showCloseButton and showDragHandle strip the chrome', (tester) async {
     await pumpHost(tester, (context) {
       showBubblesSheet<void>(
@@ -207,7 +263,8 @@ void main() {
   testWidgets('dark selects the dark palette for the chrome', (tester) async {
     await pumpHost(
       tester,
-      (context) => showBubblesSheet<void>(context, title: 'Dark', dark: true, builder: (_) => const Text('body')),
+      (context) =>
+          showBubblesSheet<void>(context, title: 'Dark', dark: true, builder: (_) => const Text('body')),
       theme: const BubblesSheetThemeData(
         light: BubblesSheetPalette.cream,
         dark: BubblesSheetPalette.charcoal,

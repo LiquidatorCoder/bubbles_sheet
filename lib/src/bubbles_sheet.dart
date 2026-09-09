@@ -75,7 +75,8 @@ class _FlushOffset implements SheetOffset {
   final double fraction;
 
   @override
-  double resolve(ViewportLayout metrics) => metrics.viewportSize.height * fraction + metrics.viewportPadding.bottom;
+  double resolve(ViewportLayout metrics) =>
+      metrics.viewportSize.height * fraction + metrics.viewportPadding.bottom;
 }
 
 // The sheet floats on its inset everywhere except right at the top of the large
@@ -133,8 +134,14 @@ Future<T?> showBubblesSheet<T extends Object?>(
     (primaryCta == null && primaryCtaBuilder == null) || footer == null,
     'Use either a primary CTA or footer, not both.',
   );
-  assert(primaryCta == null || primaryCtaBuilder == null, 'Use either primaryCta or primaryCtaBuilder, not both.');
-  assert(primaryCtaListenable == null || primaryCtaBuilder != null, 'primaryCtaListenable requires primaryCtaBuilder.');
+  assert(
+    primaryCta == null || primaryCtaBuilder == null,
+    'Use either primaryCta or primaryCtaBuilder, not both.',
+  );
+  assert(
+    primaryCtaListenable == null || primaryCtaBuilder != null,
+    'primaryCtaListenable requires primaryCtaBuilder.',
+  );
   BubblesSheetThemeData.of(context).haptics.onPresent?.call();
   final initial = initialDetent ?? detents.first;
   final hasLarge = detents.contains(BubblesSheetDetent.large);
@@ -317,12 +324,16 @@ class _BubblesSheetState extends State<_BubblesSheet> {
   @override
   Widget build(BuildContext context) {
     final snaps = widget.detents.map(_toOffset).toList();
-    final snapGrid = snaps.length == 1 ? SheetSnapGrid.single(snap: snaps.single) : SheetSnapGrid(snaps: snaps);
+    final snapGrid = snaps.length == 1
+        ? SheetSnapGrid.single(snap: snaps.single)
+        : SheetSnapGrid(snaps: snaps);
 
     // Fit-only sheets shouldn't bounce up past their natural size — bouncing
     // would expose the barrier above the sheet for no reason. Multi-detent
     // sheets get the iOS-style bounce + spring snap.
-    final physics = widget.fitOnly ? const ClampingSheetPhysics() : const BouncingSheetPhysics(bounceExtent: 16);
+    final physics = widget.fitOnly
+        ? const ClampingSheetPhysics()
+        : const BouncingSheetPhysics(bounceExtent: 16);
 
     // onlyFromTop: the iOS handoff. Inner scrollables consume drag until they
     // hit the top, then the sheet starts moving. Removes the "I scrolled up but
@@ -410,11 +421,7 @@ class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
     // opened before that lands would paint square corners and never revisit
     // them. Merging its listenable in — once, here, never per build — makes the
     // surface repaint the moment the radius arrives.
-    _repaint = Listenable.merge([
-      widget.flushAnim,
-      widget.controller,
-      BubblesDeviceCornerRadius.listenable,
-    ]);
+    _repaint = Listenable.merge([widget.flushAnim, widget.controller, BubblesDeviceCornerRadius.listenable]);
   }
 
   @override
@@ -445,7 +452,11 @@ class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
           bottomRight: bottomR,
         );
         return DecoratedBox(
-          decoration: BoxDecoration(color: palette.surface, borderRadius: shape, boxShadow: palette.surfaceShadow),
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: shape,
+            boxShadow: palette.surfaceShadow,
+          ),
           child: ClipRRect(borderRadius: shape, child: widget.child),
         );
       },
@@ -506,7 +517,12 @@ class _BubblesSheetChrome extends StatelessWidget {
 }
 
 class _BottomChrome extends StatelessWidget {
-  const _BottomChrome({required this.cta, required this.ctaListenable, required this.ctaBuilder, required this.footer});
+  const _BottomChrome({
+    required this.cta,
+    required this.ctaListenable,
+    required this.ctaBuilder,
+    required this.footer,
+  });
 
   final BubblesSheetCta? cta;
   final Listenable? ctaListenable;
@@ -583,9 +599,7 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
     if (!showDragHandle && !hasHeaderRow) return const Size.fromHeight(16);
     // The handle strip is drawn (or reserved) whenever any chrome shows, so the
     // full formula applies unless the row itself is absent.
-    return Size.fromHeight(
-      hasHeaderRow ? metrics.headerHeight : metrics.dragHandleSize.height + 10,
-    );
+    return Size.fromHeight(hasHeaderRow ? metrics.headerHeight : metrics.dragHandleSize.height + 10);
   }
 
   @override
@@ -623,11 +637,14 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
                   leading: SizedBox(
                     width: slotWidth,
                     child: showCloseButton
-                        ? _CloseButton(
-                            palette: palette,
-                            icon: theme.closeIcon,
-                            size: metrics.closeButtonSize,
-                            onTap: () => _onClose(context),
+                        ? theme.closeBuilder(
+                            context,
+                            BubblesSheetClose(
+                              icon: theme.closeIcon,
+                              onPressed: () => _onClose(context),
+                              palette: palette,
+                              size: metrics.closeButtonSize,
+                            ),
                           )
                         : null,
                   ),
@@ -686,7 +703,12 @@ class _DragHandle extends StatelessWidget {
 }
 
 class _TrailingAction extends StatelessWidget {
-  const _TrailingAction({required this.action, required this.palette, required this.style, required this.height});
+  const _TrailingAction({
+    required this.action,
+    required this.palette,
+    required this.style,
+    required this.height,
+  });
 
   final BubblesSheetAction action;
   final BubblesSheetPalette palette;
@@ -719,39 +741,6 @@ class _TrailingAction extends StatelessWidget {
                 maxLines: 1,
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({required this.onTap, required this.palette, required this.icon, required this.size});
-
-  final VoidCallback? onTap;
-  final BubblesSheetPalette palette;
-  final IconData icon;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Close',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        // Center, so the slot's constraints stop here. A tight parent — which
-        // is what NavigationToolbar hands its leading slot — otherwise wins
-        // over Container's own width/height and inflates the circle.
-        child: Center(
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(color: palette.closeButtonBackground, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 14, color: palette.closeButtonIcon),
           ),
         ),
       ),
