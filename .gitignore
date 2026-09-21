@@ -4,3 +4,10 @@ pubspec.lock
 .packages
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# Claude harness — per-checkout task state (see .claude/tasks/README.md).
+# The README and the _template/ skeleton are tracked; real task directories are not.
+.claude/tasks/*
+!.claude/tasks/README.md
+!.claude/tasks/_template/
+.claude/worktrees/

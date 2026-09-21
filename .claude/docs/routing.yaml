@@ -1,0 +1,126 @@
+# bubbles_sheet — verification tier + review routing.
+#
+# Built from what this repo actually contains (a published Flutter widget package with a
+# real flutter_test suite and a demo app; no CI workflow, no Makefile, no script runner,
+# no codegen, no android/ or ios/ directory of its own, no network, auth, storage or
+# crypto surface). Classes that would only make sense in a different kind of repo are
+# absent on purpose — there is no native-build class because this package ships no
+# platform code of its own, and no trust-boundary/session-auth class because it has none.
+#
+# Read by tool/harness/lib/classify.mjs (tiers) and tool/harness/lib/reviewpolicy.mjs
+# (review mode). Changing this file changes the verification policy fingerprint, which
+# invalidates every existing verify.json — that is intended.
+
+schema_version: 1
+repo: bubbles_sheet
+integration_branch: main
+
+tiers:
+  fast:
+    description: Static checks only. Seconds. The default working loop.
+    checks: [format, analyze]
+  normal:
+    description: fast + the widget-test suite and the demo app's own analysis.
+    checks: [format, analyze, test, example_analyze]
+  full:
+    description: normal + the pub.dev release gate.
+    checks: [format, analyze, test, example_analyze, publish_dry_run]
+
+# First match wins, top to bottom. Paths are repo-relative, glob-matched.
+classification:
+  - match: "pubspec.yaml"
+    tier: full
+    why: >-
+      SDK/Flutter constraints, dependencies, the published version and the pub.dev
+      `screenshots:` manifest all live here.
+  - match: "CHANGELOG.md"
+    tier: full
+    why: Part of the pub.dev release artifact; changed together with the version.
+  - match: "LICENSE"
+    tier: full
+    why: Distribution terms of the published archive; pub validates its presence.
+  - match: "lib/bubbles_sheet.dart"
+    tier: full
+    why: >-
+      The public export barrel. It also re-exports package:smooth_sheets wholesale, so a
+      dropped export breaks imports in every consumer, not just this package's own API.
+  - match: "doc/**"
+    tier: full
+    why: >-
+      pubspec.yaml's `screenshots:` points into doc/screenshots/; pub validates those
+      paths and their sizes at publish time, so the release gate must run.
+  - match: "lib/**"
+    tier: normal
+    why: Package implementation. Consumed by real apps; the widget-test suite exercises it.
+  - match: "test/**"
+    tier: normal
+    why: A change to a test changes what "passing" means — the suite must actually run.
+  - match: "analysis_options.yaml"
+    tier: normal
+    why: >-
+      The very_good_analysis rule set and this repo's overrides. example/ includes it,
+      so a change re-scopes every analyze run on both sides of the package boundary.
+  - match: "tool/harness/**"
+    tier: normal
+    why: Verifier/gate logic. Also a policy file (see policy_files below).
+  - match: ".claude/docs/routing.yaml"
+    tier: normal
+    why: This file. Policy change.
+  - match: "AGENTS.md"
+    tier: normal
+    why: The rules agents work from.
+  - match: "example/**"
+    tier: fast
+    why: >-
+      Demo app (publish_to: "none"). Not depended on by lib/, and analysed on its own in
+      the normal tier.
+  - match: "README.md"
+    tier: fast
+  - match: "docs/**"
+    tier: fast
+    why: Agent-facing documentation; not shipped in the published archive.
+  - match: ".claude/tasks/**"
+    tier: fast
+    why: Task bookkeeping — excluded from fingerprints entirely.
+  - match: "*"
+    tier: fast
+    why: Default floor. Nothing in this repo is verification-exempt.
+
+# Independent review is required only where a mistake escapes this repository. For a
+# pub.dev widget package that means exactly one thing: what consumers compile against.
+review:
+  default_mode: none
+  rules:
+    - match: "pubspec.yaml"
+      mode: standard
+      why: Version, SDK/Flutter constraints and publish metadata — the release path.
+    - match: "lib/bubbles_sheet.dart"
+      mode: standard
+      why: >-
+        A changed export is a breaking change downstream, and this barrel re-exports
+        smooth_sheets too.
+    - match: "lib/src/bubbles_sheet_theme.dart"
+      mode: standard
+      why: >-
+        BubblesSheetThemeData is a public ThemeExtension that host apps construct,
+        copyWith and lerp. A changed field or builder signature is a breaking change,
+        not an implementation detail.
+    - match: "LICENSE"
+      mode: standard
+      why: Distribution terms of a published artifact.
+
+# Files whose content defines "what verification means" here. Hashed into every
+# verify.json's verification_policy_fingerprint.
+policy_files:
+  - tool/harness/verify
+  - tool/harness/lib/classify.mjs
+  - tool/harness/lib/reviewpolicy.mjs
+  - .claude/docs/routing.yaml
+  - analysis_options.yaml
+
+# Shared resources a worker may need to serialize on. This repo has no codegen step
+# (no build_runner) and no simulator/device pool, so neither appears here.
+lock_resources:
+  - dependency-resolution   # flutter pub get / upgrade
+  - repo-format             # dart format . (rewrites files repo-wide)
+  - release                 # flutter pub publish
