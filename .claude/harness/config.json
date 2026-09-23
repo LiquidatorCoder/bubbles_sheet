@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "adapter_api": 1,
+  "requires_core": ">=2.0.0 <3.0.0",
+  "name": "bubbles_sheet",
+  "integration_branch": "main",
+  "verification": {
+    "policy_files": [
+      ".claude/docs/routing.yaml",
+      "analysis_options.yaml"
+    ],
+    "fingerprint_exclude": [
+      ".dart_tool/",
+      "build/",
+      "example/.dart_tool/",
+      "example/build/",
+      "coverage/"
+    ],
+    "checks": {
+      "format": {
+        "cmd": [
+          "dart",
+          "format",
+          "--output=none",
+          "--set-exit-if-changed",
+          "."
+        ],
+        "description": "dart format --output=none --set-exit-if-changed .",
+        "requires_tool": "dart"
+      },
+      "analyze": {
+        "cmd": [
+          "flutter",
+          "analyze"
+        ],
+        "description": "flutter analyze",
+        "requires_tool": "flutter"
+      },
+      "test": {
+        "cmd": [
+          "flutter",
+          "test"
+        ],
+        "description": "flutter test",
+        "requires_tool": "flutter",
+        "requires_test_glob": {
+          "dir": "test",
+          "pattern": "_test\\.dart$"
+        }
+      },
+      "example_analyze": {
+        "cmd": [
+          "flutter",
+          "analyze"
+        ],
+        "description": "flutter analyze (in example/)",
+        "subdir": "example",
+        "requires_tool": "flutter",
+        "requires_file": "example/pubspec.yaml"
+      },
+      "publish_dry_run": {
+        "cmd": [
+          "flutter",
+          "pub",
+          "publish",
+          "--dry-run"
+        ],
+        "description": "flutter pub publish --dry-run",
+        "requires_tool": "flutter"
+      }
+    },
+    "tiers": {
+      "fast": [
+        "format",
+        "analyze"
+      ],
+      "normal": [
+        "format",
+        "analyze",
+        "test",
+        "example_analyze"
+      ],
+      "full": [
+        "format",
+        "analyze",
+        "test",
+        "example_analyze",
+        "publish_dry_run"
+      ]
+    }
+  },
+  "risk": {
+    "rules": [
+      {
+        "match": "pubspec.yaml",
+        "tier": "full",
+        "why": "SDK/Flutter constraints, dependencies, the published version and the pub.dev screenshot manifest all live here"
+      },
+      {
+        "match": "CHANGELOG.md",
+        "tier": "full",
+        "why": "part of the pub.dev release artifact, changed together with the version"
+      },
+      {
+        "match": "LICENSE",
+        "tier": "full",
+        "why": "distribution terms of the published archive; pub validates its presence"
+      },
+      {
+        "match": "lib/bubbles_sheet.dart",
+        "tier": "full",
+        "why": "the public export barrel, which also re-exports package:smooth_sheets wholesale \u2014 removing an export breaks every consumer"
+      },
+      {
+        "match": "doc/**",
+        "tier": "full",
+        "why": "pubspec.yaml's screenshots: points into doc/screenshots/; pub validates those paths and sizes at publish time"
+      },
+      {
+        "match": "lib/**",
+        "tier": "normal",
+        "why": "package implementation consumed by real apps; the widget-test suite is what exercises it"
+      },
+      {
+        "match": "test/**",
+        "tier": "normal",
+        "why": "a change to a test changes what passing means \u2014 the suite must actually run"
+      },
+      {
+        "match": "analysis_options.yaml",
+        "tier": "normal",
+        "why": "very_good_analysis rule set; a change here re-scopes every analyze run in the repo and in example/"
+      },
+      {
+        "match": "tool/harness/**",
+        "tier": "normal",
+        "why": "verifier and gate logic"
+      },
+      {
+        "match": ".claude/docs/routing.yaml",
+        "tier": "normal",
+        "why": "verification policy"
+      },
+      {
+        "match": "AGENTS.md",
+        "tier": "normal",
+        "why": "the rules agents work from"
+      },
+      {
+        "match": "example/**",
+        "tier": "fast",
+        "why": "demo app (publish_to: none); not depended on by lib/, and analysed on its own in the normal tier"
+      },
+      {
+        "match": "README.md",
+        "tier": "fast",
+        "why": "documentation"
+      },
+      {
+        "match": "docs/**",
+        "tier": "fast",
+        "why": "agent-facing documentation; not shipped in the archive"
+      },
+      {
+        "match": ".claude/tasks/**",
+        "tier": "fast",
+        "why": "task bookkeeping"
+      },
+      {
+        "match": "*",
+        "tier": "fast",
+        "why": "default floor \u2014 nothing here is verification-exempt"
+      }
+    ]
+  },
+  "review": {
+    "wired": true,
+    "default_mode": "none",
+    "rules": [
+      {
+        "match": "pubspec.yaml",
+        "mode": "standard",
+        "why": "version, SDK/Flutter constraints and publish metadata \u2014 the release path"
+      },
+      {
+        "match": "lib/bubbles_sheet.dart",
+        "mode": "standard",
+        "why": "the export barrel; it also re-exports package:smooth_sheets, so a dropped export breaks imports downstream"
+      },
+      {
+        "match": "lib/src/bubbles_sheet_theme.dart",
+        "mode": "standard",
+        "why": "BubblesSheetThemeData is a public ThemeExtension that host apps construct, copyWith and lerp \u2014 a changed field or builder signature is a breaking change, not an implementation detail"
+      },
+      {
+        "match": "LICENSE",
+        "mode": "standard",
+        "why": "distribution terms of a published artifact"
+      }
+    ],
+    "preamble": [
+      "bubbles_sheet is a published Flutter package (pub.dev) of modal bottom sheets built",
+      "on package:smooth_sheets. Review the diff below for correctness and for anything",
+      "that would break a downstream consumer: changed exports in lib/bubbles_sheet.dart",
+      "(which also re-exports smooth_sheets), changed constructor or builder signatures on",
+      "the public widgets, changed fields on the BubblesSheetThemeData ThemeExtension and",
+      "its copyWith/lerp, changed default detent/inset/corner-radius behaviour, and",
+      "version/CHANGELOG consistency. The `example/` app is a demo, not a product."
+    ],
+    "generated": [
+      "\\.(g|freezed|config|gr|mocks)\\.dart$"
+    ],
+    "policy_files": [
+      ".claude/docs/routing.yaml"
+    ]
+  },
+  "locks": [
+    "dependency-resolution",
+    "repo-format",
+    "release"
+  ],
+  "native": {}
+}
