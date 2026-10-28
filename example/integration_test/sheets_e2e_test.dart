@@ -185,6 +185,12 @@ void main() {
     await launch(tester);
     final title = find.text('Sort by');
     await openSheet(tester, 'dark', title);
+    // Done starts disabled: tapping it must not pop until an option is picked.
+    await tester.tap(find.text('Done'));
+    await settle(tester);
+    expect(title, findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('dark-option-0')));
+    await settle(tester);
     await measure('dark/dismiss-cta', () async {
       await tester.tap(find.text('Done'));
       await settle(tester);

@@ -507,7 +507,13 @@ class _BubblesSheetChrome extends StatelessWidget {
     final hasCta = cta != null || ctaListenable != null;
 
     final bottomBar = (hasCta || footer != null)
-        ? _BottomChrome(cta: cta, ctaListenable: ctaListenable, ctaBuilder: primaryCtaBuilder, footer: footer)
+        ? _BottomChrome(
+            cta: cta,
+            ctaListenable: ctaListenable,
+            ctaBuilder: primaryCtaBuilder,
+            footer: footer,
+            dark: dark,
+          )
         : null;
 
     return SheetContentScaffold(
@@ -536,29 +542,48 @@ class _BottomChrome extends StatelessWidget {
     required this.ctaListenable,
     required this.ctaBuilder,
     required this.footer,
+    required this.dark,
   });
 
   final BubblesSheetCta? cta;
   final Listenable? ctaListenable;
   final BubblesSheetCtaBuilder? ctaBuilder;
   final Widget? footer;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
-    final metrics = BubblesSheetThemeData.of(context).metrics;
-    return Material(
-      type: MaterialType.transparency,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (cta != null || ctaListenable != null)
-            _PrimaryCtaSlot(
-              cta: cta ?? const BubblesSheetCta(title: '', onTap: null),
-              listenable: ctaListenable,
-              builder: ctaBuilder,
-            ),
-          if (footer != null) Padding(padding: metrics.footerPadding, child: footer),
-        ],
+    final theme = BubblesSheetThemeData.of(context);
+    final metrics = theme.metrics;
+    final appTheme = Theme.of(context);
+    // The sheet is painted from the sheet palette, not the app's ColorScheme,
+    // so a bar reading `onSurface` (the default CTA's disabled pill and label,
+    // a custom ctaBuilder or footer) would contrast with the app rather than
+    // the sheet: black-on-charcoal for `dark: true` in a light app, near-white
+    // on cream for a light sheet in a dark app. Re-anchor `onSurface` and the
+    // brightness to the sheet's palette; `primary`/`onPrimary` stay the app's.
+    final barTheme = appTheme.copyWith(
+      colorScheme: appTheme.colorScheme.copyWith(
+        brightness: dark ? Brightness.dark : Brightness.light,
+        onSurface: theme.paletteFor(dark: dark).title,
+      ),
+    );
+    return Theme(
+      data: barTheme,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (cta != null || ctaListenable != null)
+              _PrimaryCtaSlot(
+                cta: cta ?? const BubblesSheetCta(title: '', onTap: null),
+                listenable: ctaListenable,
+                builder: ctaBuilder,
+              ),
+            if (footer != null) Padding(padding: metrics.footerPadding, child: footer),
+          ],
+        ),
       ),
     );
   }
