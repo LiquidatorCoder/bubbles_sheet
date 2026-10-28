@@ -1,0 +1,21 @@
+# pub reads this file *instead of* .gitignore for the package root, so the
+# .gitignore entries are repeated here.
+.dart_tool/
+build/
+pubspec.lock
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.claude/
+
+# Agent and harness tooling. It belongs to the repository, not the package —
+# and the top-level docs/ directory fails `pub publish`'s layout check.
+AGENTS.md
+CLAUDE.md
+docs/
+tool/
+
+# Generated with `flutter create` to run the example on a device; never part
+# of the repository, so never part of the archive either.
+example/ios/
+example/android/
