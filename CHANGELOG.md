@@ -27,6 +27,12 @@
   button (about 1:1 contrast) — and a light sheet in a dark app had the same
   problem the other way round. The CTA and footer now read `onSurface` from the
   palette of the sheet they sit on; the enabled pill is unchanged.
+- Sheets now snap to a detent with a critically damped spring instead of
+  smooth_sheets' default, which is overdamped and creeps the last few points
+  into place. Dropped from large back to fit on an iPhone simulator, the time
+  from release to rest falls from about 680ms to about 370ms; drags that end
+  with a flick were already carried home by the finger's velocity and are
+  unchanged. The bounce at the ends of travel is the same.
 
 ## 0.4.0
 

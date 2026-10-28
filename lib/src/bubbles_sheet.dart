@@ -4,6 +4,7 @@ import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:bubbles_sheet/src/flush_offset.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -316,12 +317,27 @@ class _BubblesSheet extends StatefulWidget {
   State<_BubblesSheet> createState() => _BubblesSheetState();
 }
 
+/// Critically damped (ratio 1.0) and stiffer than smooth_sheets' default
+/// (mass 0.5, stiffness 100, ratio 1.1 - overdamped, slow tail that "creeps"
+/// into place). omega = 20 s^-1: ~0.4 s to settle 400 px to 1 px, no
+/// overshoot of its own. The bounce at the ends still comes from the
+/// overdrag in BouncingSheetPhysics.
+final SpringDescription _kSnapSpring = SpringDescription.withDampingRatio(mass: 1, stiffness: 400, ratio: 1);
+
+class _SnappyBouncingSheetPhysics extends BouncingSheetPhysics {
+  const _SnappyBouncingSheetPhysics({super.bounceExtent});
+
+  @override
+  SpringDescription get spring => _kSnapSpring;
+}
+
 class _BubblesSheetState extends State<_BubblesSheet> {
   late final SheetOffsetDrivenAnimation _flushAnim;
 
   @override
   void initState() {
     super.initState();
+    _configure();
     _flushAnim = SheetOffsetDrivenAnimation(
       controller: widget.controller,
       initialValue: 0,
@@ -338,32 +354,52 @@ class _BubblesSheetState extends State<_BubblesSheet> {
     };
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final snaps = widget.detents.map(_toOffset).toList();
-    final snapGrid = snaps.length == 1 ? SheetSnapGrid.single(snap: snaps.single) : SheetSnapGrid(snaps: snaps);
+  // Everything below depends only on widget fields, so it is built once (and
+  // again only if those fields change). Handing smooth_sheets a fresh snap
+  // grid on every rebuild - the keyboard animation rebuilds each frame - makes
+  // it recompute the sheet's boundaries for nothing.
+  late SheetSnapGrid _snapGrid;
+  late SheetPhysics _physics;
+  late SheetScrollConfiguration _scrollConfig;
 
-    // Fit-only sheets shouldn't bounce up past their natural size — bouncing
+  void _configure() {
+    final snaps = widget.detents.map(_toOffset).toList();
+    _snapGrid = snaps.length == 1 ? SheetSnapGrid.single(snap: snaps.single) : SheetSnapGrid(snaps: snaps);
+
+    // Fit-only sheets shouldn't bounce up past their natural size - bouncing
     // would expose the barrier above the sheet for no reason. Multi-detent
     // sheets get the iOS-style bounce + spring snap.
-    final physics = widget.fitOnly ? const ClampingSheetPhysics() : const BouncingSheetPhysics(bounceExtent: 16);
+    _physics = widget.fitOnly
+        ? ClampingSheetPhysics(spring: _kSnapSpring)
+        : const _SnappyBouncingSheetPhysics(bounceExtent: 16);
 
     // onlyFromTop: the iOS handoff. Inner scrollables consume drag until they
     // hit the top, then the sheet starts moving. Removes the "I scrolled up but
     // the sheet jumped down" bug.
-    final scrollConfig = widget.fitOnly
+    _scrollConfig = widget.fitOnly
         ? SheetScrollConfiguration.disabled
         : const SheetScrollConfiguration(
             scrollSyncMode: SheetScrollHandlingBehavior.onlyFromTop,
             delegateUnhandledOverscrollToChild: true,
           );
+  }
 
+  @override
+  void didUpdateWidget(_BubblesSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.fitOnly != oldWidget.fitOnly || !listEquals(widget.detents, oldWidget.detents)) {
+      _configure();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Sheet(
       controller: widget.controller,
       initialOffset: _toOffset(widget.initialDetent),
-      snapGrid: snapGrid,
-      physics: physics,
-      scrollConfiguration: scrollConfig,
+      snapGrid: _snapGrid,
+      physics: _physics,
+      scrollConfiguration: _scrollConfig,
       dragConfiguration: const SheetDragConfiguration(),
       decoration: SheetDecorationBuilder(
         size: SheetSize.stretch,
