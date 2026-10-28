@@ -236,7 +236,7 @@ void main() {
     });
 
     expect(find.bySemanticsLabel('Close'), findsNothing);
-    expect(find.bySemanticsLabel('Drag to dismiss'), findsNothing);
+    expect(find.bySemanticsLabel('Sheet grabber'), findsNothing);
     expect(find.text('body'), findsOneWidget);
   });
 
