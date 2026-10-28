@@ -194,12 +194,15 @@ class BubblesSheetMetrics {
   /// Overrides the device's bottom screen-corner radius, in logical pixels.
   ///
   /// The sheet's bottom corners lerp up to this as it goes flush, so the curve
-  /// continues into the bezel instead of cutting across it.
+  /// continues into the bezel instead of cutting across it. While the sheet
+  /// floats its bottom corners are concentric with the bezel
+  /// (`deviceCornerRadius - inset`) but never tighter than [topRadius], so on a
+  /// square display (zero) they mirror the top corners.
   ///
   /// Leave it null — the default — and the radius is resolved from the display
   /// for you, on both iOS and Android. See [BubblesDeviceCornerRadius]. Set it
   /// to force a value: a design that wants a specific curve, or a test that
-  /// needs a fixed one. Zero squares the bottom edge off.
+  /// needs a fixed one. Zero squares the bottom edge off once the sheet is flush.
   final double? deviceCornerRadius;
 
   /// The bottom corner radius to draw with, in logical pixels.

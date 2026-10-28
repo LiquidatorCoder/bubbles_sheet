@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/foundation.dart';
@@ -53,7 +54,11 @@ class BubblesSurfaceGeometry {
     if ((squareWhenParkedAtMax && atMax) || (squareWhenFlush && flushAnim.value >= 0.99)) {
       return 0;
     }
-    return lerpDouble(deviceRadius - inset, deviceRadius, flushAnim.value)!.clamp(0.0, deviceRadius);
+    // Floating end: concentric with the bezel (`deviceRadius - inset`), but
+    // never tighter than the top corners. With nothing to be concentric with
+    // (a square display, or a radius not known yet) the card mirrors its top.
+    final floating = math.max(deviceRadius - inset, topRadius);
+    return lerpDouble(floating, deviceRadius, flushAnim.value)!;
   }
 
   /// The visible height of a sheet box [boxHeight] tall.

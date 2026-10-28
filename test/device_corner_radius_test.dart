@@ -109,11 +109,15 @@ void main() {
 
     Radius bottomRadius() => surfaceCorners(find.byType(Sheet)).bottomLeft;
 
-    expect(bottomRadius(), Radius.zero, reason: 'nothing resolved yet');
+    expect(bottomRadius(), const Radius.circular(32), reason: 'unknown radius: the bottom mirrors the top');
 
     BubblesDeviceCornerRadius.setValueForTesting(62);
     await tester.pump();
 
-    expect(bottomRadius().x, greaterThan(0), reason: 'the surface must re-read the radius, not cache it');
+    expect(
+      bottomRadius().x,
+      46,
+      reason: 'the surface must re-read the radius, not cache it',
+    );
   });
 }
