@@ -4,6 +4,7 @@ import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:bubbles_sheet/src/flush_offset.dart';
+import 'package:bubbles_sheet/src/sheet_route.dart';
 import 'package:bubbles_sheet/src/sheet_surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -131,9 +132,9 @@ Future<T?> showBubblesSheet<T extends Object?>(
   final controller = SheetController();
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   return navigator.push<T>(
-    _BubblesSheetRoute<T>(
+    BubblesSheetRoute<T>(
       // The route owns the controller and disposes it in `Route.dispose`; see
-      // [_BubblesSheetRoute] for why that, and not the route's future, is the
+      // [BubblesSheetRoute] for why that, and not the route's future, is the
       // moment it is safe to.
       controller: controller,
       // Stronger barrier than the Cupertino route default since there's no
@@ -141,9 +142,6 @@ Future<T?> showBubblesSheet<T extends Object?>(
       barrierColor: barrierColor,
       barrierDismissible: barrierDismissible,
       swipeDismissible: swipeDismissible,
-      swipeDismissSensitivity: _kSwipeDismissSensitivity,
-      transitionDuration: const Duration(milliseconds: 360),
-      transitionCurve: const Cubic(0.16, 1, 0.3, 1),
       viewportBuilder: (ctx, child) => _BubblesSheetViewport(controller: controller, child: child),
       builder: (ctx) {
         final sheet = _BubblesSheet(
@@ -172,84 +170,6 @@ Future<T?> showBubblesSheet<T extends Object?>(
       },
     ),
   );
-}
-
-/// When a drag released below the lowest detent dismisses the sheet.
-///
-/// smooth_sheets' `_SheetDismissible` decides on release, and only for a drag
-/// that pulled the sheet below its lowest detent (above it the sheet's own
-/// physics consume the drag and the gesture handler reports "not handled", so a
-/// flick that merely settles at a lower detent is never a dismissal):
-///
-///  * keyboard open: never dismiss;
-///  * release velocity reported as 0: dismiss if the visible fraction is under
-///    `dismissalOffset` (30% by default);
-///  * moving down: dismiss only if `|v| / viewportHeight` exceeds
-///    `minFlingVelocityRatio`, however far the sheet was dragged;
-///  * moving up: never dismiss.
-///
-/// `SwipeDismissSensitivity` cannot combine distance with velocity, so the
-/// ratio `r` has to sit between two releases that must behave differently:
-///
-///  * a slow, small peek (a 40pt pull let go at ~80pt/s) must snap back, as on
-///    iOS. Flutter reports any release above `kMinFlingVelocity` (50pt/s) as a
-///    real fling, so a ratio near that floor (the previous 0.04, about 32pt/s
-///    on an 800pt viewport) dismisses this peek whatever its distance;
-///  * a deliberate drag (about 0.5 screen-heights/s, roughly 580pt/s on 874pt)
-///    must dismiss. The stock 2.0 (about 1750pt/s on an 874pt iPhone) made such
-///    a drag, taken nearly off-screen, snap back.
-///
-/// 0.2 splits them: about 175pt/s on an 874pt phone and 160pt/s on an 800pt
-/// viewport. A release reported as exactly 0 (slower than 50pt/s, or stopped
-/// before lifting) still uses the distance rule.
-const SwipeDismissSensitivity _kSwipeDismissSensitivity = SwipeDismissSensitivity(minFlingVelocityRatio: 0.2);
-
-/// A [ModalSheetRoute] that owns the [SheetController] its sheet is driven by,
-/// and disposes it only once the sheet is gone.
-///
-/// The controller has to outlive the sheet subtree, and the route's future is
-/// the wrong place to end its life: that future completes at *pop*, the start
-/// of the exit transition, while the sheet is still mounted, still attached to
-/// the controller and still relaying out (the keyboard collapsing as the route
-/// leaves is enough). Disposed there, the controller sits under a live sheet,
-/// and smooth_sheets' `SheetController.notifyListeners` — which defers a
-/// notification raised during layout to a post-frame callback — then fires on a
-/// dead controller ("A SheetController was used after being disposed."). The
-/// sheet also loses its `controller.metrics` mid-exit, so a sheet parked at the
-/// large detent would see its flush bottom corners jump back to the device
-/// radius.
-///
-/// `Navigator` only calls [dispose] once the route's overlay entries have
-/// unmounted: `_RouteEntry.dispose` waits for them, since an overlay entry is
-/// the root of the route's subtree and unmounts last. So by then the sheet's
-/// model has detached from the controller. A notification deferred earlier in that same
-/// frame can still be pending, so the controller is disposed in a post-frame
-/// callback registered from here: callbacks run in registration order, which
-/// puts it behind any deferred notify.
-class _BubblesSheetRoute<T> extends ModalSheetRoute<T> {
-  _BubblesSheetRoute({
-    required SheetController controller,
-    required super.builder,
-    required super.viewportBuilder,
-    required super.barrierColor,
-    required super.barrierDismissible,
-    required super.swipeDismissible,
-    required super.swipeDismissSensitivity,
-    required super.transitionDuration,
-    required super.transitionCurve,
-  }) : _sheetController = controller;
-
-  final SheetController _sheetController;
-
-  @override
-  void dispose() {
-    super.dispose();
-    final binding = WidgetsBinding.instance;
-    binding.addPostFrameCallback((_) => _sheetController.dispose());
-    // Disposal waits on a frame; make sure one is coming so the controller
-    // never lingers on an otherwise idle app.
-    binding.ensureVisualUpdate();
-  }
 }
 
 /// The modal route's viewport chrome: floats the sheet on its inset, lerps to
@@ -353,20 +273,6 @@ class _BubblesSheet extends StatefulWidget {
   State<_BubblesSheet> createState() => _BubblesSheetState();
 }
 
-/// Critically damped (ratio 1.0) and stiffer than smooth_sheets' default
-/// (mass 0.5, stiffness 100, ratio 1.1 - overdamped, slow tail that "creeps"
-/// into place). omega = 20 s^-1: ~0.4 s to settle 400 px to 1 px, no
-/// overshoot of its own. The bounce at the ends still comes from the
-/// overdrag in BouncingSheetPhysics.
-final SpringDescription _kSnapSpring = SpringDescription.withDampingRatio(mass: 1, stiffness: 400, ratio: 1);
-
-class _SnappyBouncingSheetPhysics extends BouncingSheetPhysics {
-  const _SnappyBouncingSheetPhysics({super.bounceExtent});
-
-  @override
-  SpringDescription get spring => _kSnapSpring;
-}
-
 class _BubblesSheetState extends State<_BubblesSheet> {
   late final SheetOffsetDrivenAnimation _flushAnim;
 
@@ -408,8 +314,8 @@ class _BubblesSheetState extends State<_BubblesSheet> {
     // would expose the barrier above the sheet for no reason. Multi-detent
     // sheets get the iOS-style bounce + spring snap.
     _physics = widget.fitOnly
-        ? ClampingSheetPhysics(spring: _kSnapSpring)
-        : const _SnappyBouncingSheetPhysics(bounceExtent: 16);
+        ? ClampingSheetPhysics(spring: kBubblesSnapSpring)
+        : const BubblesSnappyBouncingSheetPhysics(bounceExtent: 16);
 
     // onlyFromTop: the iOS handoff. Inner scrollables consume drag until they
     // hit the top, then the sheet starts moving. Removes the "I scrolled up but

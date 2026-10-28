@@ -426,29 +426,9 @@ class _HomeState extends State<_Home> {
   }
 
   void _showPaged(BuildContext context) {
-    // A fresh controller per flow, disposed with the route, as the package's own
-    // paged-sheet regression test does.
-    final controller = SheetController();
-    _track(
-      Navigator.of(context, rootNavigator: true).push<void>(
-        ModalSheetRoute<void>(
-          transitionDuration: const Duration(milliseconds: 360),
-          viewportBuilder: (ctx, child) => BubblesPagedSheetViewport(controller: controller, child: child),
-          builder: (_) => PagedSheet(
-            controller: controller,
-            decoration: SheetDecorationBuilder(
-              size: SheetSize.stretch,
-              builder: (ctx, child) => BubblesPagedSheetSurface(controller: controller, child: child),
-            ),
-            navigator: Navigator(
-              onGenerateInitialRoutes: (navigator, initialRoute) => [
-                PagedSheetRoute<void>(builder: (_) => const _PagedChoose()),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ).whenComplete(() => _disposeAfterExit([controller]));
+    // The route owns its SheetController and disposes it once the sheet has
+    // left the screen, so there is nothing to clean up here.
+    _track(showBubblesPagedSheet<void>(context, builder: (_) => const _PagedChoose()));
   }
 }
 

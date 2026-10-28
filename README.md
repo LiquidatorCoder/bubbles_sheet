@@ -130,11 +130,36 @@ if you want the answer ready before the first sheet.
 
 ## Paged sheets
 
-Multi-page flows use `smooth_sheets`' own `PagedSheet` with this package's
-chrome — `BubblesPagedSheetHeader` (which grows a back button on inner pages),
-`BubblesPagedSheetViewport`, and `BubblesPagedSheetSurface`. `smooth_sheets` is
-re-exported from `package:bubbles_sheet/bubbles_sheet.dart`, so those flows need
-one import rather than two.
+Multi-page flows use `showBubblesPagedSheet`, which wraps `smooth_sheets`'
+`PagedSheet` in the same chrome, spring, swipe-dismiss and lifecycle as
+`showBubblesSheet`:
+
+```dart
+showBubblesPagedSheet<void>(
+  context,
+  builder: (_) => const ChoosePage(),
+);
+
+// Inside ChoosePage, push inner pages with smooth_sheets' PagedSheetRoute:
+Navigator.of(context).push(
+  PagedSheetRoute<void>(builder: (_) => const DetailsPage()),
+);
+```
+
+Give each page a `BubblesPagedSheetHeader`: its close button dismisses the
+whole sheet (whichever navigator it was pushed on) and, on inner pages, a back
+button pops one page. Dismiss the sheet from your own widgets by popping the
+navigator it was pushed on, not the inner one.
+
+The pieces are still exported for custom compositions —
+`BubblesPagedSheetViewport`, `BubblesPagedSheetSurface` and the header widgets.
+If you assemble your own `ModalSheetRoute` with them, own the `SheetController`
+on the route and dispose it when the route is disposed, never in the route
+future's `whenComplete`: the future completes at pop, while the sheet is still
+on screen exiting, and a controller disposed there throws "A SheetController
+was used after being disposed." `smooth_sheets` is re-exported from
+`package:bubbles_sheet/bubbles_sheet.dart`, so those flows need one import
+rather than two.
 
 ## Notes
 
