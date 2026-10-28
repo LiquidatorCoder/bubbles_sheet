@@ -9,10 +9,11 @@ Pill-shouldered, iOS-26-style modal bottom sheets for Flutter, built on
 
 Every sheet gets the same chrome — a grab handle, a leading close button, a
 centered title, an optional trailing text action, and a primary CTA that stays
-pinned to the bottom while the body scrolls. The sheet floats on an inset above
-a dimmed barrier, and as you drag it to its largest detent the inset lerps away
-and the bottom corners grow into the device's own screen radius, so the curve
-continues into the bezel instead of cutting across it.
+pinned to the bottom while the body scrolls. At every detent short of the
+largest the sheet floats on an inset above a dimmed barrier, its bottom corners
+concentric with the display's. As you drag it to its largest detent the inset
+lerps away and the bottom corners grow into the device's own screen radius, so
+the curve continues into the bezel instead of cutting across it.
 
 ## Usage
 
@@ -166,3 +167,7 @@ rather than two.
 `dark: true` selects `BubblesSheetThemeData.dark` explicitly — it does not read
 the ambient `Theme` brightness. A sheet is often deliberately inverted against
 the screen behind it, so the choice stays at the call site.
+
+The drag handle is a "Sheet grabber" button to VoiceOver and TalkBack: its
+increase and decrease actions step between the sheet's detents, and it offers a
+dismiss action only when `swipeDismissible` is on.

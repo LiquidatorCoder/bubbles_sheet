@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.0
 
 - Added `showBubblesPagedSheet`, the paged counterpart to `showBubblesSheet`.
   Paged flows used to be assembled by hand from `ModalSheetRoute`, the paged

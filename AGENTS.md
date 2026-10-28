@@ -5,16 +5,20 @@ if a rule below is not backed by a file in this repo, it does not belong here.
 
 ## What this repo is
 
-A **published Dart/Flutter widget package** (`bubbles_sheet`, version `0.4.0` in
+A **published Dart/Flutter widget package** (`bubbles_sheet`, version `0.5.0` in
 `pubspec.yaml`): pill-shouldered, iOS-26-style modal bottom sheets built on
 `package:smooth_sheets`. Plus a demo app under `example/`.
 
 - Library source: `lib/bubbles_sheet.dart` (the public export barrel) and `lib/src/`:
-  `bubbles_sheet.dart` (`showBubblesSheet`, the detents, the surface),
-  `bubbles_paged_sheet.dart` (the paged-flow chrome), `bubbles_sheet_theme.dart`
-  (`BubblesSheetThemeData` and friends), `bubbles_sheet_actions.dart`
-  (`BubblesSheetCta`/`BubblesSheetAction`), `device_corner_radius.dart`
-  (`BubblesDeviceCornerRadius`).
+  `bubbles_sheet.dart` (`showBubblesSheet`, the detents, the chrome),
+  `bubbles_paged_sheet.dart` (`showBubblesPagedSheet` and the paged-flow chrome),
+  `bubbles_sheet_theme.dart` (`BubblesSheetThemeData` and friends),
+  `bubbles_sheet_actions.dart` (`BubblesSheetCta`/`BubblesSheetAction`),
+  `device_corner_radius.dart` (`BubblesDeviceCornerRadius`). Three more are internal and
+  not exported: `sheet_route.dart` (the route that owns the `SheetController`, the snap
+  spring and the swipe-dismiss rule), `sheet_surface.dart` (where the painted surface ends
+  and how its corners round, resolved at paint time) and `flush_offset.dart` (the
+  keyboard-aware edge-flush threshold shared by both sheets).
 - The barrel **also re-exports `package:smooth_sheets/smooth_sheets.dart` wholesale**, so
   consumers get `SheetController`, `ModalSheetRoute` and friends from one import. Dropping
   that re-export breaks downstream imports that have nothing to do with this package's own
@@ -23,7 +27,9 @@ A **published Dart/Flutter widget package** (`bubbles_sheet`, version `0.4.0` in
   platform-channel plugin, but **this repo contains no `android/`, `ios/` or other native
   directory of its own** — nothing here is built for a device.
 - Demo app: `example/` — its own pubspec (`publish_to: "none"`), depends on the package by
-  `path: ../`, includes `../analysis_options.yaml`. No `android/`/`ios/` either. Its
+  `path: ../`, includes `../analysis_options.yaml`. No `android/`/`ios/` committed either:
+  `example/integration_test/` holds an on-device e2e/perf suite whose iOS runner is
+  generated locally (see its README), excluded from analysis, and never committed. Its
   pubspec carries a standing comment that it is **deliberately not a workspace member**,
   because it ships inside the published archive and `resolution: workspace` there breaks
   `pub get` for anyone who downloads it. Do not "tidy" that into a workspace.
@@ -62,18 +68,26 @@ completion gate reads.
 
 ## Test layout
 
-`test/` holds **seven flutter_test widget-test files, 42 tests, all passing at bootstrap**.
-They are named by the behaviour they pin, not one-per-source-file:
+`test/` holds **fifteen flutter_test widget-test files, 79 tests, all passing at the
+0.5.0 release**. They are named by the behaviour they pin, not one-per-source-file:
 
 | File | Pins |
 |---|---|
 | `bubbles_sheet_test.dart` | the chrome, the CTA/close builders, pop values, the dark palette |
 | `bubbles_sheet_theme_test.dart` | `BubblesSheetThemeData` resolution, `copyWith`, `lerp` |
 | `close_button_test.dart` | one close-button size across both headers |
+| `cta_contrast_test.dart` | a disabled CTA tinted from the sheet's own palette |
 | `device_corner_radius_test.dart` | the two radius sources and the async repaint |
+| `drag_handle_semantics_test.dart` | the grabber's screen-reader label and actions |
 | `fit_detent_test.dart` | `fit` snapping back to the natural content height |
-| `keyboard_lift_test.dart` | content staying above the keyboard |
+| `floating_bottom_radius_test.dart` | floating bottom corners never tighter than the top |
+| `keyboard_lift_test.dart` | content, CTA and footer staying above the keyboard |
 | `paged_sheet_test.dart` | paged-flow teardown |
+| `partial_detent_float_test.dart` | partial detents floating inset, with rounded corners |
+| `sheet_teardown_test.dart` | the `SheetController` outliving the sheet subtree |
+| `show_paged_sheet_test.dart` | `showBubblesPagedSheet`'s lifecycle and header close |
+| `snap_spring_test.dart` | snapping to a detent quickly, without overshoot |
+| `swipe_dismiss_test.dart` | when a downward release below the lowest detent dismisses |
 
 There are **no golden tests** — nothing calls `matchesGoldenFile`, so there is no golden
 directory to update and no platform pinning to worry about. New tests follow the same
@@ -117,9 +131,8 @@ introduce one as a side effect of another change.
 - `doc/screenshots/*.png` are release assets referenced from `pubspec.yaml`; do not
   regenerate or rename them unless asked.
 
-## Known baseline (2026-09-21, at harness bootstrap)
+## Known baseline (2026-10-28, at the 0.5.0 release)
 
-`dart format --output=none --set-exit-if-changed .` **fails** on 13 of this repo's 14 Dart
-files — pre-existing state, deliberately left untouched by the bootstrap. `flutter analyze`
-is clean and `flutter test` is 42/42 green. See `docs/agents/verification.md` for what that
-means for a `fast` run.
+`dart format --output=none --set-exit-if-changed .` is clean — the repo was formatted at
+its 120-column width after bootstrap. `flutter analyze` is clean and `flutter test` is
+79/79 green. See `docs/agents/verification.md` for the check tiers.
