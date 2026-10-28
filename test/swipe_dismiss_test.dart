@@ -82,6 +82,15 @@ void main() {
     expect(done.value, isTrue);
   });
 
+  testWidgets('a slow, easing release inside the old dead band dismisses', (tester) async {
+    final (_, done) = await open(tester);
+    // 400pt over 2s: the tracker reports 200pt/s = 0.25 screen-heights/s,
+    // above Flutter's 50pt/s fling floor (so it is reported as a real velocity,
+    // not 0) yet below the 0.5 ratio (400pt/s) that used to spring this back.
+    await drag(tester, distance: 400, durationMs: 2000);
+    expect(done.value, isTrue);
+  });
+
   testWidgets('a small, slow nudge below fit does not dismiss', (tester) async {
     final (_, done) = await open(tester);
     // 40pt over 0.5s = 80pt/s = 0.1 screen-heights/s.

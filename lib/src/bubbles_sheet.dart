@@ -182,21 +182,24 @@ Future<T?> showBubblesSheet<T extends Object?>(
 /// flick that merely settles at a lower detent is never a dismissal):
 ///
 ///  * keyboard open: never dismiss;
+///  * release velocity reported as 0: dismiss if the visible fraction is under
+///    `dismissalOffset` (30% by default);
 ///  * moving down: dismiss only if `|v| / viewportHeight` exceeds
-///    `minFlingVelocityRatio` (stock default 2.0, about 1750pt/s on an 874pt
-///    screen), however far the sheet was dragged;
-///  * resting (v ~ 0): dismiss if the visible fraction is under
-///    `dismissalOffset`;
+///    `minFlingVelocityRatio`, however far the sheet was dragged;
 ///  * moving up: never dismiss.
 ///
-/// With the stock ratio, releasing a nearly off-screen sheet with a moderate
-/// downward velocity (0 < v < 2 screens/s) springs it back, which is the
-/// opposite of what iOS does. 0.5 (about 440pt/s on an 874pt screen) counts as
-/// a deliberate downward release, while a finger that has come to rest still
-/// falls through to the distance rule.
-const SwipeDismissSensitivity _kSwipeDismissSensitivity = SwipeDismissSensitivity(
-  minFlingVelocityRatio: 0.5,
-);
+/// Flutter's drag recogniser reports any release slower than `kMinFlingVelocity`
+/// (50 logical px/s) as exactly 0. So with ratio `r` there is a dead band of
+/// `[50pt/s, r * viewportHeight]` in which a sheet dragged almost off-screen
+/// springs back, whatever the distance. The stock 2.0 leaves that band about
+/// 1750pt/s wide; a release that eases out, as a real finger or the simulator's
+/// swipe does, lands squarely inside it.
+///
+/// 0.04 closes the band: about 35pt/s on an 874pt phone and 55pt/s on a 1366pt
+/// iPad, at or just above Flutter's own fling floor. Any detectable downward
+/// release past the lowest detent dismisses, as on iOS, while a release that
+/// stays still keeps using the distance rule.
+const SwipeDismissSensitivity _kSwipeDismissSensitivity = SwipeDismissSensitivity(minFlingVelocityRatio: 0.04);
 
 /// A [ModalSheetRoute] that owns the [SheetController] its sheet is driven by,
 /// and disposes it only once the sheet is gone.
