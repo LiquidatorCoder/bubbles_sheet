@@ -304,7 +304,8 @@ class _BubblesPagedSheetViewportState extends State<BubblesPagedSheetViewport> {
 }
 
 /// Sheet decoration for paged sheets. Top corners hold the theme's top radius;
-/// bottom corners lerp from `deviceCornerRadius - inset` (floating) up to
+/// bottom corners lerp from `max(deviceCornerRadius - inset, topRadius)`
+/// (floating; on a square or unknown display the bottom mirrors the top) to
 /// `deviceCornerRadius` (flush) as the sheet approaches the large detent — and
 /// snap to 0 once fully flush, since the device's own screen corner curve takes
 /// over the clipping at that point.

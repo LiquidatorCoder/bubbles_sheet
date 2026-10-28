@@ -69,6 +69,13 @@
   second — now dismisses, while a slow peek still settles back and a still
   release keeps the distance rule. Flicks that merely carry the sheet to a
   lower detent are unaffected.
+- Fixed floating sheets losing their bottom curve on displays with square
+  corners (iPhone SE, most of web and desktop) and wherever the display radius
+  can't be resolved. The floating bottom radius was the display's radius minus
+  the inset, which is nothing on a square screen, so the sheet floated with
+  rounded top corners over a square bottom. It now never drops below the top
+  radius; curved displays are unchanged, and a flush sheet on a square screen is
+  still square.
 - The sheet surface repaints as the sheet moves instead of rebuilding its
   widgets on every frame of a drag.
 

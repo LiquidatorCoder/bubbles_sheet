@@ -375,7 +375,8 @@ class _BubblesSheetState extends State<_BubblesSheet> {
 }
 
 /// Renders the sheet background, shadow, and concentric corners. Bottom radius
-/// lerps from `deviceCornerRadius - inset` (floating) up to
+/// lerps from `max(deviceCornerRadius - inset, topRadius)` (floating; on a
+/// square or unknown display the bottom mirrors the top) to
 /// `deviceCornerRadius` (flush) as the sheet approaches the large detent — then
 /// snaps to 0 once the sheet is parked at the large (flush) detent, since the
 /// device's own screen corner curve takes over the clipping at that point.
