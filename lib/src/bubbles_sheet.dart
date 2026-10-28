@@ -141,6 +141,7 @@ Future<T?> showBubblesSheet<T extends Object?>(
       barrierColor: barrierColor,
       barrierDismissible: barrierDismissible,
       swipeDismissible: swipeDismissible,
+      swipeDismissSensitivity: _kSwipeDismissSensitivity,
       transitionDuration: const Duration(milliseconds: 360),
       transitionCurve: const Cubic(0.16, 1, 0.3, 1),
       viewportBuilder: (ctx, child) => _BubblesSheetViewport(controller: controller, child: child),
@@ -173,6 +174,36 @@ Future<T?> showBubblesSheet<T extends Object?>(
   );
 }
 
+/// When a drag released below the lowest detent dismisses the sheet.
+///
+/// smooth_sheets' `_SheetDismissible` decides on release, and only for a drag
+/// that pulled the sheet below its lowest detent (above it the sheet's own
+/// physics consume the drag and the gesture handler reports "not handled", so a
+/// flick that merely settles at a lower detent is never a dismissal):
+///
+///  * keyboard open: never dismiss;
+///  * release velocity reported as 0: dismiss if the visible fraction is under
+///    `dismissalOffset` (30% by default);
+///  * moving down: dismiss only if `|v| / viewportHeight` exceeds
+///    `minFlingVelocityRatio`, however far the sheet was dragged;
+///  * moving up: never dismiss.
+///
+/// `SwipeDismissSensitivity` cannot combine distance with velocity, so the
+/// ratio `r` has to sit between two releases that must behave differently:
+///
+///  * a slow, small peek (a 40pt pull let go at ~80pt/s) must snap back, as on
+///    iOS. Flutter reports any release above `kMinFlingVelocity` (50pt/s) as a
+///    real fling, so a ratio near that floor (the previous 0.04, about 32pt/s
+///    on an 800pt viewport) dismisses this peek whatever its distance;
+///  * a deliberate drag (about 0.5 screen-heights/s, roughly 580pt/s on 874pt)
+///    must dismiss. The stock 2.0 (about 1750pt/s on an 874pt iPhone) made such
+///    a drag, taken nearly off-screen, snap back.
+///
+/// 0.2 splits them: about 175pt/s on an 874pt phone and 160pt/s on an 800pt
+/// viewport. A release reported as exactly 0 (slower than 50pt/s, or stopped
+/// before lifting) still uses the distance rule.
+const SwipeDismissSensitivity _kSwipeDismissSensitivity = SwipeDismissSensitivity(minFlingVelocityRatio: 0.2);
+
 /// A [ModalSheetRoute] that owns the [SheetController] its sheet is driven by,
 /// and disposes it only once the sheet is gone.
 ///
@@ -203,6 +234,7 @@ class _BubblesSheetRoute<T> extends ModalSheetRoute<T> {
     required super.barrierColor,
     required super.barrierDismissible,
     required super.swipeDismissible,
+    required super.swipeDismissSensitivity,
     required super.transitionDuration,
     required super.transitionCurve,
   }) : _sheetController = controller;
