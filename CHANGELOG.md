@@ -1,5 +1,17 @@
 ## Unreleased
 
+- Added `showBubblesPagedSheet`, the paged counterpart to `showBubblesSheet`.
+  Paged flows used to be assembled by hand from `ModalSheetRoute`, the paged
+  viewport and surface, and a `SheetController` the caller had to dispose — and
+  the obvious place to dispose it, the route future's `whenComplete`, is the
+  same premature dispose that crashed modal sheets closed with the keyboard up.
+  The new function owns the controller on its route and shares the modal
+  sheets' spring, swipe-dismiss, transition, barrier and present haptic. The
+  building blocks stay exported for custom compositions.
+- Fixed the paged header's close button dismissing the wrong route when the
+  sheet was pushed on a nested navigator. It popped the root navigator's top
+  route; it now pops the navigator that hosts the sheet, and honours `PopScope`
+  through `maybePop` the way the modal header already did.
 - Fixed the primary CTA and the footer disappearing behind the software
   keyboard. The sheet already lifts itself above the keyboard, but the bottom
   bar was also told to hide by the keyboard's height, so it was pushed under it

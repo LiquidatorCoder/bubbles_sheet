@@ -3,15 +3,82 @@ import 'dart:ui';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:bubbles_sheet/src/flush_offset.dart';
+import 'package:bubbles_sheet/src/sheet_route.dart';
 import 'package:bubbles_sheet/src/sheet_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
+/// Push a paged modal sheet: a multi-page flow inside one Bubbles sheet.
+///
+/// [builder] builds the first page. Push further pages from inside it with the
+/// inner navigator, using smooth_sheets' `PagedSheetRoute` (re-exported by this
+/// package):
+///
+/// ```dart
+/// showBubblesPagedSheet<void>(
+///   context,
+///   builder: (_) => const ChoosePage(),
+/// );
+///
+/// // Inside ChoosePage:
+/// Navigator.of(context).push(
+///   PagedSheetRoute<void>(builder: (_) => const DetailsPage()),
+/// );
+/// ```
+///
+/// Give each page a [BubblesPagedSheetHeader]; its close button dismisses the
+/// whole sheet and its back button pops the inner navigator. To dismiss the
+/// sheet from your own widgets, pop the navigator that hosts it:
+/// `Navigator.of(context, rootNavigator: true).pop(result)` when the sheet was
+/// pushed on the root navigator (the default), or the navigator the sheet was
+/// pushed on when [useRootNavigator] is false. The inner `Navigator.of(context)`
+/// pops a page, not the sheet.
+///
+/// Unlike a hand-assembled `ModalSheetRoute`, the route owns its
+/// `SheetController` and disposes it only once the sheet has left the screen,
+/// and it shares the modal sheets' snap spring, swipe-dismiss sensitivity,
+/// transition, barrier and present haptic.
+///
+/// Pages are fit-to-content: the sheet grows and shrinks to the current page.
+Future<T?> showBubblesPagedSheet<T extends Object?>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  bool swipeDismissible = true,
+  Color barrierColor = const Color(0x52000000),
+  bool useRootNavigator = true,
+}) {
+  BubblesSheetThemeData.of(context).haptics.onPresent?.call();
+  final controller = SheetController();
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  return navigator.push<T>(
+    BubblesSheetRoute<T>(
+      // Disposed by the route once the sheet is gone; see [BubblesSheetRoute].
+      controller: controller,
+      barrierColor: barrierColor,
+      barrierDismissible: barrierDismissible,
+      swipeDismissible: swipeDismissible,
+      viewportBuilder: (ctx, child) => BubblesPagedSheetViewport(controller: controller, child: child),
+      builder: (ctx) => PagedSheet(
+        controller: controller,
+        physics: ClampingSheetPhysics(spring: kBubblesSnapSpring),
+        decoration: SheetDecorationBuilder(
+          size: SheetSize.stretch,
+          builder: (ctx, child) => BubblesPagedSheetSurface(controller: controller, child: child),
+        ),
+        navigator: Navigator(
+          onGenerateInitialRoutes: (navigator, initialRoute) => [PagedSheetRoute<void>(builder: builder)],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Top chrome for a page inside a `PagedSheet`. Drag handle + circular leading
 /// button + centered title.
 ///
-/// - [showClose] uses the theme's close icon and pops the root navigator
-///   (dismisses the whole sheet).
+/// - [showClose] uses the theme's close icon and pops the route that hosts the
+///   paged sheet (dismisses the whole sheet), honouring its `PopScope`.
 /// - [showBack] uses the theme's back icon and pops the inner navigator
 ///   (returns to the previous page in the paged sheet).
 class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWidget {
@@ -44,6 +111,19 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
   @override
   Size get preferredSize => Size.fromHeight(metrics.headerHeight);
 
+  /// The navigator the paged sheet's route lives on.
+  ///
+  /// A page's nearest navigator is the sheet's inner page navigator; the sheet
+  /// itself sits on whichever navigator it was pushed to, which is the root one
+  /// only by default. That is the navigator above the inner one.
+  ///
+  /// `Navigator.of` returns the navigator itself when handed its own context, so
+  /// the lookup has to start from the inner navigator's parent.
+  static NavigatorState _hostNavigator(BuildContext context) {
+    final inner = Navigator.of(context);
+    return inner.context.findAncestorStateOfType<NavigatorState>() ?? Navigator.of(context, rootNavigator: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
@@ -75,7 +155,7 @@ class BubblesPagedSheetHeader extends StatelessWidget implements PreferredSizeWi
                               icon: theme.closeIcon,
                               onPressed: () {
                                 theme.haptics.onDismiss?.call();
-                                Navigator.of(context, rootNavigator: true).pop();
+                                _hostNavigator(context).maybePop();
                               },
                               // A paged sheet has no `dark` flag of its own;
                               // its chrome has always been the light palette.
