@@ -53,9 +53,10 @@
   past a threshold, or flung faster than two screen-heights a second — a
   steady drag nearly off the bottom of an iPhone and released mid-motion
   snapped back up, because anything between "still" and "flung" fell through
-  both rules. Any downward release Flutter registers as a fling now dismisses,
-  as on iOS, and a still release keeps the distance rule. Flicks that merely
-  carry the sheet to a lower detent are unaffected.
+  both rules. A deliberate downward release — from a fifth of a screen-height a
+  second — now dismisses, while a slow peek still settles back and a still
+  release keeps the distance rule. Flicks that merely carry the sheet to a
+  lower detent are unaffected.
 - The sheet surface repaints as the sheet moves instead of rebuilding its
   widgets on every frame of a drag.
 
