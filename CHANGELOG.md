@@ -1,3 +1,16 @@
+## Unreleased
+
+- Fixed the primary CTA and the footer disappearing behind the software
+  keyboard. The sheet already lifts itself above the keyboard, but the bottom
+  bar was also told to hide by the keyboard's height, so it was pushed under it
+  a second time — on an iPhone the whole 84pt CTA slot sat behind the keys and a
+  tap on it closed the sheet through the barrier instead.
+- Fixed paged sheets squaring off to the device edges when the keyboard lifts
+  them. The modal sheet already discounted the keyboard when deciding how close
+  it was to its large detent; the paged viewport and surface did not, so a
+  focused field on a tall page could make the sheet lose its inset and its
+  rounded bottom corners while it was still floating.
+
 ## 0.4.0
 
 - Added `BubblesSheetThemeData.closeBuilder`, the counterpart to `ctaBuilder`.
