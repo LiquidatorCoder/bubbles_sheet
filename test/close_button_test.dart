@@ -94,8 +94,7 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => ElevatedButton(
-              onPressed: () =>
-                  showBubblesSheet<void>(context, title: 'Sort by', builder: (_) => const Text('body')),
+              onPressed: () => showBubblesSheet<void>(context, title: 'Sort by', builder: (_) => const Text('body')),
               child: const Text('open'),
             ),
           ),

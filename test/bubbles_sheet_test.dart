@@ -180,8 +180,7 @@ void main() {
       tester,
       (context) => showBubblesSheet<void>(context, builder: (_) => const Text('body')),
       theme: BubblesSheetThemeData(
-        closeBuilder: (context, close) =>
-            TextButton(onPressed: close.onPressed, child: const Text('custom close')),
+        closeBuilder: (context, close) => TextButton(onPressed: close.onPressed, child: const Text('custom close')),
       ),
     );
 
@@ -196,8 +195,7 @@ void main() {
       tester,
       (context) => showBubblesSheet<void>(context, builder: (_) => const Text('body')),
       theme: BubblesSheetThemeData(
-        closeBuilder: (context, close) =>
-            TextButton(onPressed: close.onPressed, child: const Text('custom close')),
+        closeBuilder: (context, close) => TextButton(onPressed: close.onPressed, child: const Text('custom close')),
       ),
     );
     expect(find.text('body'), findsOneWidget);
@@ -263,8 +261,7 @@ void main() {
   testWidgets('dark selects the dark palette for the chrome', (tester) async {
     await pumpHost(
       tester,
-      (context) =>
-          showBubblesSheet<void>(context, title: 'Dark', dark: true, builder: (_) => const Text('body')),
+      (context) => showBubblesSheet<void>(context, title: 'Dark', dark: true, builder: (_) => const Text('body')),
       theme: const BubblesSheetThemeData(
         light: BubblesSheetPalette.cream,
         dark: BubblesSheetPalette.charcoal,

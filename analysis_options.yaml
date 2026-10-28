@@ -2,6 +2,12 @@
 # package boundary.
 include: package:very_good_analysis/analysis_options.10.2.0.yaml
 
+# The code is written to 120 columns (lines_longer_than_80_chars is off below),
+# so the formatter has to agree — at its 80-column default `dart format` would
+# reflow nearly every file and the format check could never pass.
+formatter:
+  page_width: 120
+
 linter:
   rules:
     # Same call as the host app: every type and every field that carries
@@ -20,3 +26,6 @@ linter:
     sort_pub_dependencies: false
     discarded_futures: false
     unawaited_futures: false
+analyzer:
+  exclude:
+    - build/**
