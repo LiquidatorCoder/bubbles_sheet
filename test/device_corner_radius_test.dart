@@ -1,5 +1,6 @@
 import 'package:bubbles_sheet/bubbles_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -87,14 +88,26 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    Radius bottomRadius() {
-      final decorated = tester
-          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-          .firstWhere(
-            (d) => (d.decoration as BoxDecoration).borderRadius is BorderRadius,
-          );
-      return ((decorated.decoration as BoxDecoration).borderRadius! as BorderRadius).bottomLeft;
+    // The surface paints and clips to one rounded rect; read its corners from
+    // the clipper the way the render tree resolves them.
+    BorderRadius surfaceCorners(Finder scope) {
+      final clip = find.descendant(
+        of: scope,
+        matching: find.byWidgetPredicate(
+          (w) => w is ClipRRect && w.clipper.runtimeType.toString() == '_SurfaceClipper',
+        ),
+      );
+      final render = tester.renderObject<RenderClipRRect>(clip.first);
+      final rrect = render.clipper!.getClip(render.size);
+      return BorderRadius.only(
+        topLeft: rrect.tlRadius,
+        topRight: rrect.trRadius,
+        bottomLeft: rrect.blRadius,
+        bottomRight: rrect.brRadius,
+      );
     }
+
+    Radius bottomRadius() => surfaceCorners(find.byType(Sheet)).bottomLeft;
 
     expect(bottomRadius(), Radius.zero, reason: 'nothing resolved yet');
 

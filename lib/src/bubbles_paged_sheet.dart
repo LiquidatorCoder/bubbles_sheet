@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:bubbles_sheet/src/flush_offset.dart';
+import 'package:bubbles_sheet/src/sheet_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -243,7 +244,7 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
   // build would make AnimatedBuilder resubscribe to the SheetController on every
   // one of them. (See BubblesPagedSheetViewport.)
   late final SheetOffsetDrivenAnimation _flushAnim;
-  late final Listenable _repaint;
+  late final BubblesSurfaceRepaint _repaint;
 
   @override
   void initState() {
@@ -254,47 +255,45 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
       startOffset: const BubblesFlushOffset(kBubblesFlushBegin),
       endOffset: const BubblesFlushOffset(kBubblesFlushEnd),
     );
+    _repaint = BubblesSurfaceRepaint([_flushAnim, widget.controller]);
     // BubblesDeviceCornerRadius resolves over a platform channel, so a sheet
     // opened before that lands would paint square corners and never revisit
-    // them. Merging its listenable in — once, here, never per build — makes the
-    // surface repaint the moment the radius arrives.
-    _repaint = Listenable.merge([_flushAnim, widget.controller, BubblesDeviceCornerRadius.listenable]);
+    // them. The radius is an input to the geometry, so its arrival rebuilds
+    // this surface once.
+    BubblesDeviceCornerRadius.listenable.addListener(_onDeviceRadius);
   }
+
+  @override
+  void dispose() {
+    BubblesDeviceCornerRadius.listenable.removeListener(_onDeviceRadius);
+    _repaint.dispose();
+    super.dispose();
+  }
+
+  void _onDeviceRadius() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
     final palette = theme.light;
-    final topRadius = Radius.circular(theme.metrics.topRadius);
-    return AnimatedBuilder(
-      animation: _repaint,
-      builder: (context, _) {
-        // Inside the builder, not captured outside it — see the note in
-        // bubbles_sheet.dart: the radius can land after the first paint.
-        final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
-        final t = _flushAnim.value;
-        final lerped = lerpDouble(deviceR - theme.metrics.inset, deviceR, t)!.clamp(0.0, deviceR);
+    return BubblesSheetSurfaceBox(
+      geometry: BubblesSurfaceGeometry(
+        controller: widget.controller,
+        flushAnim: _flushAnim,
+        topRadius: theme.metrics.topRadius,
+        deviceRadius: theme.metrics.resolveDeviceCornerRadius(context),
+        inset: theme.metrics.inset,
         // Only zero the radius once the sheet is actually flush with the
         // viewport top — not when a content-fit sheet sits at its single snap
         // (where offset == maxOffset trivially), and not when the keyboard
-        // merely lifts it (BubblesFlushOffset absorbs that inset, so t stays 0).
-        final isFlush = t >= 0.99;
-        final bottomR = Radius.circular(isFlush ? 0.0 : lerped);
-        final shape = BorderRadius.only(
-          topLeft: topRadius,
-          topRight: topRadius,
-          bottomLeft: bottomR,
-          bottomRight: bottomR,
-        );
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: palette.surface,
-            borderRadius: shape,
-            boxShadow: palette.surfaceShadow,
-          ),
-          child: ClipRRect(borderRadius: shape, child: widget.child),
-        );
-      },
+        // merely lifts it (BubblesFlushOffset absorbs that inset, so the flush
+        // animation stays at 0).
+        squareWhenFlush: true,
+      ),
+      repaint: _repaint,
+      color: palette.surface,
+      shadows: palette.surfaceShadow,
+      child: widget.child,
     );
   }
 }
