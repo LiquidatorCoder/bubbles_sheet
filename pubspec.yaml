@@ -9,7 +9,7 @@ issue_tracker: https://github.com/LiquidatorCoder/bubbles_sheet/issues
 screenshots:
   - description: "A content-sized sheet, floating above the dimmed screen with a sticky pill CTA."
     path: doc/screenshots/01-fit.png
-  - description: "A half-height detent with a scrolling body, flush against the bottom edge."
+  - description: "A half-height detent with a scrolling body."
     path: doc/screenshots/02-detents.png
   - description: "A text action in the header's trailing slot, and a CTA driven by the body's state."
     path: doc/screenshots/03-action.png
