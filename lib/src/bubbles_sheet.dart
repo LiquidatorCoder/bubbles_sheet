@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
+import 'package:bubbles_sheet/src/flush_offset.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -63,26 +64,6 @@ class _TopInsetAwareViewportOffset implements SheetOffset {
     return viewportHeight * factor.clamp(0.0, 1.0);
   }
 }
-
-/// Flush threshold proportional to the viewport, shifted up by the bottom
-/// viewport inset (the software keyboard). When the keyboard lifts the sheet,
-/// this keeps the lift from spuriously engaging the edge-flush — the sheet
-/// holds its floating inset and rounded corners while a field is focused, and
-/// only kisses the device edges when the user actually drags it toward large.
-class _FlushOffset implements SheetOffset {
-  const _FlushOffset(this.fraction);
-
-  final double fraction;
-
-  @override
-  double resolve(ViewportLayout metrics) => metrics.viewportSize.height * fraction + metrics.viewportPadding.bottom;
-}
-
-// The sheet floats on its inset everywhere except right at the top of the large
-// detent — there it lerps the inset to 0 and the bottom corners up to the
-// device's screen radius so the curve continues smoothly into the bezel.
-const double _kFlushBegin = 0.6;
-const double _kFlushEnd = 0.9;
 
 /// Push a modal sheet with the Bubbles chrome.
 ///
@@ -228,8 +209,8 @@ class _BubblesSheetViewportState extends State<_BubblesSheetViewport> {
     _flushAnim = SheetOffsetDrivenAnimation(
       controller: widget.controller,
       initialValue: 0,
-      startOffset: const _FlushOffset(_kFlushBegin),
-      endOffset: const _FlushOffset(_kFlushEnd),
+      startOffset: const BubblesFlushOffset(kBubblesFlushBegin),
+      endOffset: const BubblesFlushOffset(kBubblesFlushEnd),
     );
   }
 
@@ -238,7 +219,7 @@ class _BubblesSheetViewportState extends State<_BubblesSheetViewport> {
     final metrics = BubblesSheetThemeData.of(context).metrics;
     final view = MediaQuery.viewPaddingOf(context);
     // Lift the whole floating sheet above the software keyboard so its content
-    // (fields, CTA) stays reachable. _FlushOffset absorbs this inset, so the
+    // (fields, CTA) stays reachable. BubblesFlushOffset absorbs this inset, so the
     // lift never triggers the edge-flush.
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     // Float at the configured inset everywhere; lerp to flush as the sheet
@@ -307,8 +288,8 @@ class _BubblesSheetState extends State<_BubblesSheet> {
     _flushAnim = SheetOffsetDrivenAnimation(
       controller: widget.controller,
       initialValue: 0,
-      startOffset: const _FlushOffset(_kFlushBegin),
-      endOffset: const _FlushOffset(_kFlushEnd),
+      startOffset: const BubblesFlushOffset(kBubblesFlushBegin),
+      endOffset: const BubblesFlushOffset(kBubblesFlushEnd),
     );
   }
 
@@ -496,7 +477,10 @@ class _BubblesSheetChrome extends StatelessWidget {
 
     return SheetContentScaffold(
       backgroundColor: Colors.transparent,
-      bottomBarVisibility: const BottomBarVisibility.always(),
+      // The whole sheet is already lifted above the keyboard by the viewport's
+      // bottom padding, so the bar rides up with the body. Left to react to
+      // viewInsets itself it would be hidden twice over, behind the keyboard.
+      bottomBarVisibility: const BottomBarVisibility.always(ignoreBottomInset: true),
       topBar: _Header(
         title: title,
         trailingAction: trailingAction,

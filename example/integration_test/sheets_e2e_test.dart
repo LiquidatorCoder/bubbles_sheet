@@ -270,10 +270,6 @@ void main() {
       expect(tester.view.viewInsets.bottom, greaterThan(0), reason: 'software keyboard should be up');
       expect(tester.getBottomLeft(find.text('Add')).dy, lessThanOrEqualTo(keyboardTop));
     },
-    // lib bug: on iPhone 17 sim (402x874, keyboard 335pt) the "Add" CTA centre
-    // sits at y=563 while the keyboard top is at y=539, so the CTA is hidden
-    // behind the keyboard. The fit sheet is lifted 251pt, not 335pt.
-    skip: true,
   );
 
   testWidgets(

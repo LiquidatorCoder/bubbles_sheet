@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
+import 'package:bubbles_sheet/src/flush_offset.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -195,8 +196,8 @@ class _BubblesPagedSheetViewportState extends State<BubblesPagedSheetViewport> {
     _flushAnim = SheetOffsetDrivenAnimation(
       controller: widget.controller,
       initialValue: 0,
-      startOffset: const SheetOffset.proportionalToViewport(0.6),
-      endOffset: const SheetOffset.proportionalToViewport(0.9),
+      startOffset: const BubblesFlushOffset(kBubblesFlushBegin),
+      endOffset: const BubblesFlushOffset(kBubblesFlushEnd),
     );
   }
 
@@ -251,8 +252,8 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
     _flushAnim = SheetOffsetDrivenAnimation(
       controller: widget.controller,
       initialValue: 0,
-      startOffset: const SheetOffset.proportionalToViewport(0.6),
-      endOffset: const SheetOffset.proportionalToViewport(0.9),
+      startOffset: const BubblesFlushOffset(kBubblesFlushBegin),
+      endOffset: const BubblesFlushOffset(kBubblesFlushEnd),
     );
     // BubblesDeviceCornerRadius resolves over a platform channel, so a sheet
     // opened before that lands would paint square corners and never revisit
@@ -276,7 +277,8 @@ class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
         final lerped = lerpDouble(deviceR - theme.metrics.inset, deviceR, t)!.clamp(0.0, deviceR);
         // Only zero the radius once the sheet is actually flush with the
         // viewport top — not when a content-fit sheet sits at its single snap
-        // (where offset == maxOffset trivially).
+        // (where offset == maxOffset trivially), and not when the keyboard
+        // merely lifts it (BubblesFlushOffset absorbs that inset, so t stays 0).
         final isFlush = t >= 0.99;
         final bottomR = Radius.circular(isFlush ? 0.0 : lerped);
         final shape = BorderRadius.only(
