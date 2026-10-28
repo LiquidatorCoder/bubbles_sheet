@@ -154,6 +154,7 @@ Future<T?> showBubblesSheet<T extends Object?>(
           trailingAction: trailingAction,
           showCloseButton: showCloseButton,
           showDragHandle: showDragHandle,
+          swipeDismissible: swipeDismissible,
           primaryCta: primaryCta,
           primaryCtaBuilder: primaryCtaBuilder,
           primaryCtaListenable: primaryCtaListenable,
@@ -289,6 +290,7 @@ class _BubblesSheet extends StatefulWidget {
     required this.trailingAction,
     required this.showCloseButton,
     required this.showDragHandle,
+    required this.swipeDismissible,
     required this.primaryCta,
     required this.primaryCtaBuilder,
     required this.primaryCtaListenable,
@@ -306,6 +308,7 @@ class _BubblesSheet extends StatefulWidget {
   final BubblesSheetAction? trailingAction;
   final bool showCloseButton;
   final bool showDragHandle;
+  final bool swipeDismissible;
   final BubblesSheetCta? primaryCta;
   final BubblesSheetCtaBuilder? primaryCtaBuilder;
   final Listenable? primaryCtaListenable;
@@ -361,9 +364,11 @@ class _BubblesSheetState extends State<_BubblesSheet> {
   late SheetSnapGrid _snapGrid;
   late SheetPhysics _physics;
   late SheetScrollConfiguration _scrollConfig;
+  late List<SheetOffset> _detentOffsets;
 
   void _configure() {
     final snaps = widget.detents.map(_toOffset).toList();
+    _detentOffsets = snaps;
     _snapGrid = snaps.length == 1 ? SheetSnapGrid.single(snap: snaps.single) : SheetSnapGrid(snaps: snaps);
 
     // Fit-only sheets shouldn't bounce up past their natural size - bouncing
@@ -412,6 +417,9 @@ class _BubblesSheetState extends State<_BubblesSheet> {
         ),
       ),
       child: _BubblesSheetChrome(
+        controller: widget.controller,
+        detentOffsets: _detentOffsets,
+        swipeDismissible: widget.swipeDismissible,
         title: widget.title,
         trailingAction: widget.trailingAction,
         showCloseButton: widget.showCloseButton,
@@ -513,6 +521,9 @@ class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
 
 class _BubblesSheetChrome extends StatelessWidget {
   const _BubblesSheetChrome({
+    required this.controller,
+    required this.detentOffsets,
+    required this.swipeDismissible,
     required this.title,
     required this.trailingAction,
     required this.showCloseButton,
@@ -525,6 +536,9 @@ class _BubblesSheetChrome extends StatelessWidget {
     required this.body,
   });
 
+  final SheetController controller;
+  final List<SheetOffset> detentOffsets;
+  final bool swipeDismissible;
   final String? title;
   final BubblesSheetAction? trailingAction;
   final bool showCloseButton;
@@ -559,6 +573,9 @@ class _BubblesSheetChrome extends StatelessWidget {
       // viewInsets itself it would be hidden twice over, behind the keyboard.
       bottomBarVisibility: const BottomBarVisibility.always(ignoreBottomInset: true),
       topBar: _Header(
+        controller: controller,
+        detentOffsets: detentOffsets,
+        swipeDismissible: swipeDismissible,
         title: title,
         trailingAction: trailingAction,
         showDragHandle: showDragHandle,
@@ -652,6 +669,9 @@ class _PrimaryCtaSlot extends StatelessWidget {
 
 class _Header extends StatelessWidget implements PreferredSizeWidget {
   const _Header({
+    required this.controller,
+    required this.detentOffsets,
+    required this.swipeDismissible,
     required this.title,
     required this.trailingAction,
     required this.showDragHandle,
@@ -660,6 +680,9 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
     required this.theme,
   });
 
+  final SheetController controller;
+  final List<SheetOffset> detentOffsets;
+  final bool swipeDismissible;
   final String? title;
   final BubblesSheetAction? trailingAction;
   final bool showDragHandle;
@@ -696,7 +719,13 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
           Padding(
             padding: const EdgeInsets.only(top: 6, bottom: 4),
             child: showDragHandle
-                ? _DragHandle(size: metrics.dragHandleSize, color: palette.dragHandle)
+                ? _DragHandle(
+                    size: metrics.dragHandleSize,
+                    color: palette.dragHandle,
+                    controller: controller,
+                    detentOffsets: detentOffsets,
+                    onDismiss: swipeDismissible ? () => _onClose(context) : null,
+                  )
                 : SizedBox.fromSize(size: metrics.dragHandleSize),
           ),
           if (hasHeaderRow)
@@ -757,22 +786,79 @@ class _Header extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
+/// The sheet's grabber, as assistive tech sees it.
+///
+/// A sighted user drags the pill between detents; a screen-reader user gets the
+/// same through the adjustable actions (iOS's own grabber behaves this way):
+/// increase animates to the next larger detent, decrease to the next smaller.
+/// An action is only offered when there is somewhere to go, so a sheet at its
+/// largest detent never announces "increase". Dismiss is offered only when a
+/// swipe would actually dismiss the sheet - a locked sheet must not claim it.
 class _DragHandle extends StatelessWidget {
-  const _DragHandle({required this.size, required this.color});
+  const _DragHandle({
+    required this.size,
+    required this.color,
+    required this.controller,
+    required this.detentOffsets,
+    required this.onDismiss,
+  });
 
   final Size size;
   final Color color;
+  final SheetController controller;
+  final List<SheetOffset> detentOffsets;
+  final VoidCallback? onDismiss;
+
+  // Same feel as the sheet's own snap: a short ease-out, no overshoot.
+  static const Duration _stepDuration = Duration(milliseconds: 300);
+  static const Curve _stepCurve = Curves.easeOutCubic;
+
+  /// The detent offsets strictly above and below the sheet's current position,
+  /// resolved against the live metrics (fit tracks the content height), as
+  /// (nearest larger, nearest smaller). Either is null at the ends.
+  (SheetOffset?, SheetOffset?) _neighbours() {
+    final metrics = controller.metrics;
+    if (metrics == null) return (null, null);
+    final stops = [for (final o in detentOffsets) (o, o.resolve(metrics))]..sort((a, b) => a.$2.compareTo(b.$2));
+    SheetOffset? larger;
+    SheetOffset? smaller;
+    for (final (offset, px) in stops) {
+      if (px > metrics.offset + 0.5) {
+        larger ??= offset;
+      } else if (px < metrics.offset - 0.5) {
+        smaller = offset;
+      }
+    }
+    return (larger, smaller);
+  }
+
+  void _step(SheetOffset? to) {
+    if (to == null) return;
+    controller.animateTo(to, duration: _stepDuration, curve: _stepCurve);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Drag to dismiss',
-      container: true,
-      child: Container(
-        width: size.width,
-        height: size.height,
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(size.height / 2)),
-      ),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final (larger, smaller) = _neighbours();
+        final canResize = larger != null || smaller != null;
+        return Semantics(
+          label: 'Sheet grabber',
+          hint: canResize ? 'Swipe up or down to change the sheet height' : null,
+          button: true,
+          container: true,
+          onIncrease: larger == null ? null : () => _step(larger),
+          onDecrease: smaller == null ? null : () => _step(smaller),
+          onDismiss: onDismiss,
+          child: Container(
+            width: size.width,
+            height: size.height,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(size.height / 2)),
+          ),
+        );
+      },
     );
   }
 }

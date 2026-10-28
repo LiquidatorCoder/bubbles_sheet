@@ -33,6 +33,13 @@
   from release to rest falls from about 680ms to about 370ms; drags that end
   with a flick were already carried home by the finger's velocity and are
   unchanged. The bounce at the ends of travel is the same.
+- The drag handle is now usable with a screen reader. It used to announce
+  "Drag to dismiss" on every sheet — including ones opened with
+  `swipeDismissible: false`, which can't be dragged away — and offered no action,
+  so VoiceOver and TalkBack users had no way to grow a sheet the way a sighted
+  user drags its handle. It is now a "Sheet grabber" button whose increase and
+  decrease actions step between the sheet's detents, with a dismiss action only
+  when swipe-to-dismiss is actually enabled.
 
 ## 0.4.0
 
