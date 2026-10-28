@@ -75,8 +75,7 @@ class _FlushOffset implements SheetOffset {
   final double fraction;
 
   @override
-  double resolve(ViewportLayout metrics) =>
-      metrics.viewportSize.height * fraction + metrics.viewportPadding.bottom;
+  double resolve(ViewportLayout metrics) => metrics.viewportSize.height * fraction + metrics.viewportPadding.bottom;
 }
 
 // The sheet floats on its inset everywhere except right at the top of the large
@@ -324,16 +323,12 @@ class _BubblesSheetState extends State<_BubblesSheet> {
   @override
   Widget build(BuildContext context) {
     final snaps = widget.detents.map(_toOffset).toList();
-    final snapGrid = snaps.length == 1
-        ? SheetSnapGrid.single(snap: snaps.single)
-        : SheetSnapGrid(snaps: snaps);
+    final snapGrid = snaps.length == 1 ? SheetSnapGrid.single(snap: snaps.single) : SheetSnapGrid(snaps: snaps);
 
     // Fit-only sheets shouldn't bounce up past their natural size — bouncing
     // would expose the barrier above the sheet for no reason. Multi-detent
     // sheets get the iOS-style bounce + spring snap.
-    final physics = widget.fitOnly
-        ? const ClampingSheetPhysics()
-        : const BouncingSheetPhysics(bounceExtent: 16);
+    final physics = widget.fitOnly ? const ClampingSheetPhysics() : const BouncingSheetPhysics(bounceExtent: 16);
 
     // onlyFromTop: the iOS handoff. Inner scrollables consume drag until they
     // hit the top, then the sheet starts moving. Removes the "I scrolled up but
