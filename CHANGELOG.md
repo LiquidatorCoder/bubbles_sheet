@@ -21,6 +21,12 @@
   If you build a paged flow yourself, the same rule applies to your own
   `SheetController`: dispose it when the route is disposed, not in the route
   future's `whenComplete`.
+- Fixed a disabled primary CTA being all but invisible on a `dark: true` sheet.
+  Its greyed-out pill and label were tinted from the app's colour scheme, not
+  from the sheet's palette, so a dark sheet in a light app drew a black-on-black
+  button (about 1:1 contrast) — and a light sheet in a dark app had the same
+  problem the other way round. The CTA and footer now read `onSurface` from the
+  palette of the sheet they sit on; the enabled pill is unchanged.
 
 ## 0.4.0
 

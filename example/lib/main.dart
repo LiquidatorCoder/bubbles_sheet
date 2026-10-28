@@ -56,7 +56,7 @@ class _HomeState extends State<_Home> {
                 _Button(slug: 'fit-large', label: 'Fit + large', onTap: () => _showBasic(context)),
                 _Button(slug: 'three-detents', label: 'Three detents, scrolling', onTap: () => _showScrolling(context)),
                 _Button(slug: 'live-cta', label: 'Trailing action + live CTA', onTap: () => _showCounter(context)),
-                _Button(slug: 'dark', label: 'Dark chrome', onTap: () => _showBasic(context, dark: true)),
+                _Button(slug: 'dark', label: 'Dark chrome', onTap: () => _showDark(context)),
                 _Button(slug: 'form', label: 'Form with keyboard', onTap: () => _showForm(context)),
                 _Button(slug: 'form-autofocus', label: 'Autofocus form', onTap: () => _showAutofocus(context)),
                 _Button(slug: 'fit-only', label: 'Fit only', onTap: () => _showFitOnly(context)),
@@ -82,12 +82,11 @@ class _HomeState extends State<_Home> {
     );
   }
 
-  void _showBasic(BuildContext context, {bool dark = false}) {
+  void _showBasic(BuildContext context) {
     _track(
       showBubblesSheet<void>(
         context,
         title: 'Sort by',
-        dark: dark,
         primaryCta: BubblesSheetCta(title: 'Done', onTap: () => Navigator.of(context).pop()),
         builder: (context) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -100,7 +99,7 @@ class _HomeState extends State<_Home> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     option,
-                    style: TextStyle(fontSize: 16, color: dark ? const Color(0xFFFAF9F5) : const Color(0xFF111111)),
+                    style: const TextStyle(fontSize: 16, color: Color(0xFF111111)),
                   ),
                 ),
             ],
@@ -108,6 +107,58 @@ class _HomeState extends State<_Home> {
         ),
       ),
     );
+  }
+
+  /// The dark sheet starts with Done disabled until a sort option is picked, so
+  /// the disabled CTA can be seen against the charcoal surface on a device.
+  void _showDark(BuildContext context) {
+    const options = ['Value · high to low', 'Value · low to high', 'Name · A to Z'];
+    final selected = ValueNotifier<int?>(null);
+    _track(
+      showBubblesSheet<void>(
+        context,
+        title: 'Sort by',
+        dark: true,
+        primaryCtaListenable: selected,
+        primaryCtaBuilder: (context) => BubblesSheetCta(
+          title: 'Done',
+          enabled: selected.value != null,
+          onTap: selected.value == null ? null : () => Navigator.of(context).pop(),
+        ),
+        builder: (context) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ValueListenableBuilder<int?>(
+            valueListenable: selected,
+            builder: (context, value, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < options.length; i++)
+                  GestureDetector(
+                    key: ValueKey('dark-option-$i'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => selected.value = i,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              options[i],
+                              style: const TextStyle(fontSize: 16, color: Color(0xFFFAF9F5)),
+                            ),
+                          ),
+                          if (value == i) const Icon(Icons.check, size: 18, color: Color(0xFFFAF9F5)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(() => _disposeAfterExit([selected]));
   }
 
   void _showScrolling(BuildContext context) {
