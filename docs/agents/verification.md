@@ -29,22 +29,16 @@ maps the changed-file set to a tier, and the completion gate takes the highest o
 task's declared tier, the classifier's tier, the tier the verify run itself recorded).
 Declaring `fast` on a change to `pubspec.yaml` does not make it a fast change.
 
-## Known state of this repo (2026-09-21, at bootstrap)
+## Known state of this repo (2026-10-28, at the 0.5.0 release)
 
 Recorded here because a check that is green for the wrong reason is worse than a red one:
 
-- **`format` currently fails.** 13 of the repo's 14 Dart files are not clean under the
-  Dart 3.11 formatter — every file under `lib/src/` and `test/`, plus
-  `example/lib/main.dart`. This is pre-existing repository state and was deliberately
-  left untouched by the harness bootstrap: `dart format .` would rewrite most of the
-  repo, and that is the repo owner's call, not the harness's. Until it is run, **every
-  tier comes back `failed`**, `fast` included.
-- **`analyze` is clean.** `flutter analyze` reports no issues.
-- **`test` is green.** 42 tests across 7 files under `test/`, all passing. Unlike some
-  packages this harness has been installed into, there is a real suite here — a `normal`
-  run genuinely exercises the widgets.
-- **`publish_dry_run` was not exercised at bootstrap.** It is wired and will run; it had
-  no reason to run in a `fast` acceptance check.
+- **`format` is clean.** The bootstrap left 13 of 14 Dart files unformatted; the repo
+  has since been formatted at the 120-column width it is written to.
+- **`analyze` is clean**, in the package and in `example/`.
+- **`test` is green.** 79 tests across 15 files under `test/`, all passing — a real
+  suite, so a `normal` run genuinely exercises the widgets.
+- **`publish_dry_run` passes** for 0.5.0.
 
 ## Result semantics
 
