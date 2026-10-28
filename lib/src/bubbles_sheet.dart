@@ -141,6 +141,7 @@ Future<T?> showBubblesSheet<T extends Object?>(
       barrierColor: barrierColor,
       barrierDismissible: barrierDismissible,
       swipeDismissible: swipeDismissible,
+      swipeDismissSensitivity: _kSwipeDismissSensitivity,
       transitionDuration: const Duration(milliseconds: 360),
       transitionCurve: const Cubic(0.16, 1, 0.3, 1),
       viewportBuilder: (ctx, child) => _BubblesSheetViewport(controller: controller, child: child),
@@ -173,6 +174,30 @@ Future<T?> showBubblesSheet<T extends Object?>(
   );
 }
 
+/// When a drag released below the lowest detent dismisses the sheet.
+///
+/// smooth_sheets' `_SheetDismissible` decides on release, and only for a drag
+/// that pulled the sheet below its lowest detent (above it the sheet's own
+/// physics consume the drag and the gesture handler reports "not handled", so a
+/// flick that merely settles at a lower detent is never a dismissal):
+///
+///  * keyboard open: never dismiss;
+///  * moving down: dismiss only if `|v| / viewportHeight` exceeds
+///    `minFlingVelocityRatio` (stock default 2.0, about 1750pt/s on an 874pt
+///    screen), however far the sheet was dragged;
+///  * resting (v ~ 0): dismiss if the visible fraction is under
+///    `dismissalOffset`;
+///  * moving up: never dismiss.
+///
+/// With the stock ratio, releasing a nearly off-screen sheet with a moderate
+/// downward velocity (0 < v < 2 screens/s) springs it back, which is the
+/// opposite of what iOS does. 0.5 (about 440pt/s on an 874pt screen) counts as
+/// a deliberate downward release, while a finger that has come to rest still
+/// falls through to the distance rule.
+const SwipeDismissSensitivity _kSwipeDismissSensitivity = SwipeDismissSensitivity(
+  minFlingVelocityRatio: 0.5,
+);
+
 /// A [ModalSheetRoute] that owns the [SheetController] its sheet is driven by,
 /// and disposes it only once the sheet is gone.
 ///
@@ -203,6 +228,7 @@ class _BubblesSheetRoute<T> extends ModalSheetRoute<T> {
     required super.barrierColor,
     required super.barrierDismissible,
     required super.swipeDismissible,
+    required super.swipeDismissSensitivity,
     required super.transitionDuration,
     required super.transitionCurve,
   }) : _sheetController = controller;

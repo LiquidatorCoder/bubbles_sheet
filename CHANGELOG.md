@@ -48,6 +48,12 @@
   painted and hit-tested now, so nothing hidden under the inset is tappable;
   dragged below its lowest detent the sheet still slides away whole. The
   `02-detents.png` screenshot shows the old look.
+- Fixed swipe-to-dismiss springing back when you let go while still moving.
+  Dragged below its lowest detent, a sheet only dismissed if released dead still
+  past a threshold, or flung faster than two screen-heights a second — a
+  steady drag nearly off the bottom of an iPhone and released mid-motion
+  snapped back up. A downward release now dismisses from half a screen-height a
+  second. Flicks that merely carry the sheet to a lower detent are unaffected.
 - The sheet surface repaints as the sheet moves instead of rebuilding its
   widgets on every frame of a drag.
 
