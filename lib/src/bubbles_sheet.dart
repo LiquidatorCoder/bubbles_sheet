@@ -496,7 +496,10 @@ class _BubblesSheetChrome extends StatelessWidget {
 
     return SheetContentScaffold(
       backgroundColor: Colors.transparent,
-      bottomBarVisibility: const BottomBarVisibility.always(),
+      // The whole sheet is already lifted above the keyboard by the viewport's
+      // bottom padding, so the bar rides up with the body. Left to react to
+      // viewInsets itself it would be hidden twice over, behind the keyboard.
+      bottomBarVisibility: const BottomBarVisibility.always(ignoreBottomInset: true),
       topBar: _Header(
         title: title,
         trailingAction: trailingAction,
