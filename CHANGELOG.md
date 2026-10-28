@@ -10,6 +10,17 @@
   it was to its large detent; the paged viewport and surface did not, so a
   focused field on a tall page could make the sheet lose its inset and its
   rounded bottom corners while it was still floating.
+- Fixed "A SheetController was used after being disposed." when a sheet was
+  closed with the keyboard up. The controller was disposed as soon as the route
+  popped — the *start* of the exit animation — while the sheet was still on
+  screen and still relaying out as the keyboard went down. The route now owns
+  the controller and releases it only once the sheet has left the tree. The same
+  early disposal made a sheet parked at the large detent round its flush bottom
+  corners back off mid-exit; that is gone too.
+
+  If you build a paged flow yourself, the same rule applies to your own
+  `SheetController`: dispose it when the route is disposed, not in the route
+  future's `whenComplete`.
 
 ## 0.4.0
 

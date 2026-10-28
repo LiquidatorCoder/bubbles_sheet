@@ -128,52 +128,93 @@ Future<T?> showBubblesSheet<T extends Object?>(
   final fitOnly = detents.length == 1 && detents.single == BubblesSheetDetent.fit;
   final controller = SheetController();
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
-  return navigator
-      .push<T>(
-        ModalSheetRoute<T>(
-          // Stronger barrier than the Cupertino route default since there's no
-          // parent-recede effect to do the visual layering.
-          barrierColor: barrierColor,
-          barrierDismissible: barrierDismissible,
-          swipeDismissible: swipeDismissible,
-          transitionDuration: const Duration(milliseconds: 360),
-          transitionCurve: const Cubic(0.16, 1, 0.3, 1),
-          viewportBuilder: (ctx, child) => _BubblesSheetViewport(controller: controller, child: child),
-          builder: (ctx) {
-            final sheet = _BubblesSheet(
-              controller: controller,
-              detents: detents,
-              initialDetent: initial,
-              hasLarge: hasLarge,
-              fitOnly: fitOnly,
-              title: title,
-              trailingAction: trailingAction,
-              showCloseButton: showCloseButton,
-              showDragHandle: showDragHandle,
-              primaryCta: primaryCta,
-              primaryCtaBuilder: primaryCtaBuilder,
-              primaryCtaListenable: primaryCtaListenable,
-              footer: footer,
-              dark: dark,
-              body: Builder(builder: builder),
-            );
-            if (!dismissKeyboardOnDrag) return sheet;
-            return SheetKeyboardDismissible(
-              dismissBehavior: const SheetKeyboardDismissBehavior.onDragDown(isContentScrollAware: true),
-              child: sheet,
-            );
-          },
-        ),
-      )
-      .whenComplete(() {
-        // Defer dispose by one frame so widgets inside the popped sheet finish
-        // unmounting before the controller is torn down. Without this, a
-        // follow-up route push (e.g. sheets that pop with a route path and then
-        // push it) triggers a MediaQuery rebuild on the still-mounted sheet
-        // subtree — `AnimatedBuilder.didUpdateWidget` then calls `addListener`
-        // on a disposed controller and throws.
-        WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
-      });
+  return navigator.push<T>(
+    _BubblesSheetRoute<T>(
+      // The route owns the controller and disposes it in `Route.dispose`; see
+      // [_BubblesSheetRoute] for why that, and not the route's future, is the
+      // moment it is safe to.
+      controller: controller,
+      // Stronger barrier than the Cupertino route default since there's no
+      // parent-recede effect to do the visual layering.
+      barrierColor: barrierColor,
+      barrierDismissible: barrierDismissible,
+      swipeDismissible: swipeDismissible,
+      transitionDuration: const Duration(milliseconds: 360),
+      transitionCurve: const Cubic(0.16, 1, 0.3, 1),
+      viewportBuilder: (ctx, child) => _BubblesSheetViewport(controller: controller, child: child),
+      builder: (ctx) {
+        final sheet = _BubblesSheet(
+          controller: controller,
+          detents: detents,
+          initialDetent: initial,
+          hasLarge: hasLarge,
+          fitOnly: fitOnly,
+          title: title,
+          trailingAction: trailingAction,
+          showCloseButton: showCloseButton,
+          showDragHandle: showDragHandle,
+          primaryCta: primaryCta,
+          primaryCtaBuilder: primaryCtaBuilder,
+          primaryCtaListenable: primaryCtaListenable,
+          footer: footer,
+          dark: dark,
+          body: Builder(builder: builder),
+        );
+        if (!dismissKeyboardOnDrag) return sheet;
+        return SheetKeyboardDismissible(
+          dismissBehavior: const SheetKeyboardDismissBehavior.onDragDown(isContentScrollAware: true),
+          child: sheet,
+        );
+      },
+    ),
+  );
+}
+
+/// A [ModalSheetRoute] that owns the [SheetController] its sheet is driven by,
+/// and disposes it only once the sheet is gone.
+///
+/// The controller has to outlive the sheet subtree, and the route's future is
+/// the wrong place to end its life: that future completes at *pop*, the start
+/// of the exit transition, while the sheet is still mounted, still attached to
+/// the controller and still relaying out (the keyboard collapsing as the route
+/// leaves is enough). Disposed there, the controller sits under a live sheet,
+/// and smooth_sheets' `SheetController.notifyListeners` — which defers a
+/// notification raised during layout to a post-frame callback — then fires on a
+/// dead controller ("A SheetController was used after being disposed."). The
+/// sheet also loses its `controller.metrics` mid-exit, so a sheet parked at the
+/// large detent would see its flush bottom corners jump back to the device
+/// radius.
+///
+/// `Navigator` only calls [dispose] once the route's overlay entries have
+/// unmounted: `_RouteEntry.dispose` waits for them, since an overlay entry is
+/// the root of the route's subtree and unmounts last. So by then the sheet's
+/// model has detached from the controller. A notification deferred earlier in that same
+/// frame can still be pending, so the controller is disposed in a post-frame
+/// callback registered from here: callbacks run in registration order, which
+/// puts it behind any deferred notify.
+class _BubblesSheetRoute<T> extends ModalSheetRoute<T> {
+  _BubblesSheetRoute({
+    required SheetController controller,
+    required super.builder,
+    required super.viewportBuilder,
+    required super.barrierColor,
+    required super.barrierDismissible,
+    required super.swipeDismissible,
+    required super.transitionDuration,
+    required super.transitionCurve,
+  }) : _sheetController = controller;
+
+  final SheetController _sheetController;
+
+  @override
+  void dispose() {
+    super.dispose();
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) => _sheetController.dispose());
+    // Disposal waits on a frame; make sure one is coming so the controller
+    // never lingers on an otherwise idle app.
+    binding.ensureVisualUpdate();
+  }
 }
 
 /// The modal route's viewport chrome: floats the sheet on its inset, lerps to
@@ -182,14 +223,10 @@ Future<T?> showBubblesSheet<T extends Object?>(
 ///
 /// The [SheetOffsetDrivenAnimation] is created ONCE in `initState` — never
 /// inside the build closure. The viewport rebuilds whenever the keyboard inset
-/// changes; rebuilding the animation on each of those frames makes
-/// `AnimatedBuilder.didUpdateWidget` swap listeners onto the [SheetController].
-/// Once the route's `whenComplete` has disposed that controller (which happens
-/// as the sheet pops with the keyboard still collapsing), the swap calls
-/// `addListener` on a disposed controller and throws "A SheetController was
-/// used after being disposed.", cascading into a `_dependents.isEmpty` crash.
-/// Caching the animation in State keeps `didUpdateWidget` seeing the same
-/// instance, so no listener swap fires during teardown.
+/// changes; rebuilding the animation on each of those frames would make
+/// `AnimatedBuilder.didUpdateWidget` unsubscribe from the old animation and
+/// subscribe to a new one on the [SheetController] every time, for no benefit.
+/// Caching it in State keeps one subscription for the sheet's life.
 class _BubblesSheetViewport extends StatefulWidget {
   const _BubblesSheetViewport({required this.controller, required this.child});
 
@@ -383,11 +420,9 @@ class _BubblesSheetSurface extends StatefulWidget {
 
 class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
   // Merge once in initState, never per build. SheetDecorationBuilder rebuilds
-  // this surface on every layout tick; a fresh Listenable.merge each time makes
-  // AnimatedBuilder.didUpdateWidget swap listeners onto the SheetController,
-  // which throws "used after disposed" once the route's whenComplete has torn
-  // the controller down during a teardown relayout. (Same hazard the hoisted
-  // _BubblesSheetViewport guards against.)
+  // this surface on every layout tick; a fresh Listenable.merge each time would
+  // make AnimatedBuilder.didUpdateWidget resubscribe to the SheetController on
+  // every one of them. (Same reasoning as the hoisted _BubblesSheetViewport.)
   late final Listenable _repaint;
 
   @override

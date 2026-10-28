@@ -241,8 +241,8 @@ void main() {
     await tester.enterText(field, 'milk');
     await settle(tester);
     expect(fieldText(tester, 'form-autofocus-field-0'), 'milk');
-    // The CTA is hidden behind the keyboard here (see the skipped test below),
-    // so put the keyboard away before tapping it.
+    // Put the keyboard away before tapping the CTA, so the tap measures the
+    // dismiss itself rather than a keyboard collapsing underneath it.
     FocusManager.instance.primaryFocus?.unfocus();
     await settle(tester);
     // `settle` can return while the platform is still animating the keyboard
@@ -272,21 +272,15 @@ void main() {
     },
   );
 
-  testWidgets(
-    'form-autofocus: barrier tap with keyboard up tears down cleanly',
-    (tester) async {
-      await launch(tester);
-      final field = find.byKey(const ValueKey('form-autofocus-field-0'));
-      await openSheet(tester, 'form-autofocus', field);
-      await tapBarrier(tester);
-      await settle(tester);
-      expect(field, findsNothing);
-      expectClean(tester);
-    },
-    // lib bug: popping the sheet while the keyboard is up throws "A
-    // SheetController was used after being disposed." from takeException.
-    skip: true,
-  );
+  testWidgets('form-autofocus: barrier tap with keyboard up tears down cleanly', (tester) async {
+    await launch(tester);
+    final field = find.byKey(const ValueKey('form-autofocus-field-0'));
+    await openSheet(tester, 'form-autofocus', field);
+    await tapBarrier(tester);
+    await settle(tester);
+    expect(field, findsNothing);
+    expectClean(tester);
+  });
 
   testWidgets('fit-only: swipe down dismisses', (tester) async {
     await launch(tester);
