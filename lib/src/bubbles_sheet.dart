@@ -4,6 +4,7 @@ import 'package:bubbles_sheet/src/bubbles_sheet_actions.dart';
 import 'package:bubbles_sheet/src/bubbles_sheet_theme.dart';
 import 'package:bubbles_sheet/src/device_corner_radius.dart';
 import 'package:bubbles_sheet/src/flush_offset.dart';
+import 'package:bubbles_sheet/src/sheet_surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
@@ -463,58 +464,51 @@ class _BubblesSheetSurface extends StatefulWidget {
 }
 
 class _BubblesSheetSurfaceState extends State<_BubblesSheetSurface> {
-  // Merge once in initState, never per build. SheetDecorationBuilder rebuilds
-  // this surface on every layout tick; a fresh Listenable.merge each time would
-  // make AnimatedBuilder.didUpdateWidget resubscribe to the SheetController on
-  // every one of them. (Same reasoning as the hoisted _BubblesSheetViewport.)
-  late final Listenable _repaint;
+  // Built once in initState, never per build: SheetDecorationBuilder rebuilds
+  // this surface on every layout tick, and every new painter re-subscribes to
+  // its repaint listenable (see BubblesSurfaceRepaint).
+  late final BubblesSurfaceRepaint _repaint;
 
   @override
   void initState() {
     super.initState();
+    _repaint = BubblesSurfaceRepaint([widget.flushAnim, widget.controller]);
     // BubblesDeviceCornerRadius resolves over a platform channel, so a sheet
     // opened before that lands would paint square corners and never revisit
-    // them. Merging its listenable in — once, here, never per build — makes the
-    // surface repaint the moment the radius arrives.
-    _repaint = Listenable.merge([widget.flushAnim, widget.controller, BubblesDeviceCornerRadius.listenable]);
+    // them. The radius is an input to the geometry, not something read at paint
+    // time, so its arrival rebuilds this surface once.
+    BubblesDeviceCornerRadius.listenable.addListener(_onDeviceRadius);
   }
+
+  @override
+  void dispose() {
+    BubblesDeviceCornerRadius.listenable.removeListener(_onDeviceRadius);
+    _repaint.dispose();
+    super.dispose();
+  }
+
+  void _onDeviceRadius() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
     final theme = BubblesSheetThemeData.of(context);
     final palette = theme.paletteFor(dark: widget.dark);
-    final topRadius = Radius.circular(theme.metrics.topRadius);
-    return AnimatedBuilder(
-      animation: _repaint,
-      builder: (context, _) {
-        // Resolved inside the builder, not captured outside it: the radius can
-        // arrive after this surface first painted, and _repaint only re-runs
-        // this closure. Reading it in the outer build would pin the first
-        // answer — 0, before the channel replies — for the sheet's whole life.
-        final deviceR = theme.metrics.resolveDeviceCornerRadius(context);
-        final m = widget.controller.metrics;
-        final atMax = m != null && m.offset >= m.maxOffset - 0.5;
-        final t = widget.flushAnim.value;
-        final lerped = lerpDouble(deviceR - theme.metrics.inset, deviceR, t)!.clamp(0.0, deviceR);
+    return BubblesSheetSurfaceBox(
+      geometry: BubblesSurfaceGeometry(
+        controller: widget.controller,
+        flushAnim: widget.flushAnim,
+        topRadius: theme.metrics.topRadius,
+        deviceRadius: theme.metrics.resolveDeviceCornerRadius(context),
+        inset: theme.metrics.inset,
         // Only square the bottom corners once the sheet is flush against the
         // device edge — i.e. parked at the large detent. A fit-only sheet is
         // "at max" while still floating, so it keeps its rounded corners.
-        final bottomR = Radius.circular(atMax && widget.hasLarge ? 0.0 : lerped);
-        final shape = BorderRadius.only(
-          topLeft: topRadius,
-          topRight: topRadius,
-          bottomLeft: bottomR,
-          bottomRight: bottomR,
-        );
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: palette.surface,
-            borderRadius: shape,
-            boxShadow: palette.surfaceShadow,
-          ),
-          child: ClipRRect(borderRadius: shape, child: widget.child),
-        );
-      },
+        squareWhenParkedAtMax: widget.hasLarge,
+      ),
+      repaint: _repaint,
+      color: palette.surface,
+      shadows: palette.surfaceShadow,
+      child: widget.child,
     );
   }
 }

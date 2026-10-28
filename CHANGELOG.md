@@ -40,6 +40,16 @@
   user drags its handle. It is now a "Sheet grabber" button whose increase and
   decrease actions step between the sheet's detents, with a dismiss action only
   when swipe-to-dismiss is actually enabled.
+- **Look change:** a sheet resting at the medium detent — or at any height below
+  its content — now floats like a sheet at the fit detent does: inset from the
+  bottom edge, with bottom corners concentric with the display. It used to keep
+  its side insets but run straight off the bottom of the screen, because the
+  sheet is never laid out shorter than its content. Only the visible part is
+  painted and hit-tested now, so nothing hidden under the inset is tappable;
+  dragged below its lowest detent the sheet still slides away whole. The
+  `02-detents.png` screenshot shows the old look.
+- The sheet surface repaints as the sheet moves instead of rebuilding its
+  widgets on every frame of a drag.
 
 ## 0.4.0
 

@@ -1,5 +1,6 @@
 import 'package:bubbles_sheet/bubbles_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Regression for the paged-sheet chrome. A page with a text field raises the
@@ -149,14 +150,26 @@ void main() {
     expect(tester.getTopLeft(surface).dx, theme.metrics.inset);
     expect(tester.getSize(surface).width, screen.width - 2 * theme.metrics.inset);
 
-    final decoration =
-        tester
-                .widget<DecoratedBox>(
-                  find.descendant(of: surface, matching: find.byType(DecoratedBox)).first,
-                )
-                .decoration
-            as BoxDecoration;
-    final radius = decoration.borderRadius! as BorderRadius;
+    // The surface paints and clips to one rounded rect; read its corners from
+    // the clipper the way the render tree resolves them.
+    BorderRadius surfaceCorners(Finder scope) {
+      final clip = find.descendant(
+        of: scope,
+        matching: find.byWidgetPredicate(
+          (w) => w is ClipRRect && w.clipper.runtimeType.toString() == '_SurfaceClipper',
+        ),
+      );
+      final render = tester.renderObject<RenderClipRRect>(clip.first);
+      final rrect = render.clipper!.getClip(render.size);
+      return BorderRadius.only(
+        topLeft: rrect.tlRadius,
+        topRight: rrect.trRadius,
+        bottomLeft: rrect.blRadius,
+        bottomRight: rrect.brRadius,
+      );
+    }
+
+    final radius = surfaceCorners(surface);
     expect(radius.bottomLeft.x, greaterThan(0));
     expect(radius.bottomRight.x, greaterThan(0));
   });
