@@ -84,4 +84,80 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // Regression: raising the keyboard lifts the paged sheet, which used to push
+  // its offset past the viewport-proportional flush threshold and start
+  // shrinking the side inset (and square off the bottom corners) while the
+  // sheet was still floating well below the top. The flush threshold must
+  // absorb the keyboard inset.
+  testWidgets('paged sheet keeps floating inset and corners when the keyboard lifts it', (tester) async {
+    tester.view
+      ..devicePixelRatio = 1.0
+      ..physicalSize = screen;
+    addTearDown(
+      () => tester.view
+        ..resetViewInsets()
+        ..resetPhysicalSize()
+        ..resetDevicePixelRatio(),
+    );
+
+    const theme = BubblesSheetThemeData(metrics: BubblesSheetMetrics(deviceCornerRadius: 48));
+    final controller = SheetController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.light().copyWith(extensions: [theme]),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context, rootNavigator: true).push<void>(
+                ModalSheetRoute<void>(
+                  viewportBuilder: (ctx, child) => BubblesPagedSheetViewport(controller: controller, child: child),
+                  builder: (_) => Sheet(
+                    controller: controller,
+                    snapGrid: const SheetSnapGrid.single(snap: SheetOffset(1)),
+                    decoration: SheetDecorationBuilder(
+                      size: SheetSize.stretch,
+                      builder: (ctx, child) => BubblesPagedSheetSurface(controller: controller, child: child),
+                    ),
+                    child: const Material(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [TextField(), SizedBox(height: 200)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: keyboard);
+    await tester.pumpAndSettle();
+
+    final surface = find.byType(BubblesPagedSheetSurface);
+    // Still well below the top, so there is no reason to be flush.
+    expect(tester.getTopLeft(surface).dy, greaterThan(screen.height * 0.1));
+    expect(tester.getTopLeft(surface).dx, theme.metrics.inset);
+    expect(tester.getSize(surface).width, screen.width - 2 * theme.metrics.inset);
+
+    final decoration =
+        tester
+                .widget<DecoratedBox>(
+                  find.descendant(of: surface, matching: find.byType(DecoratedBox)).first,
+                )
+                .decoration
+            as BoxDecoration;
+    final radius = decoration.borderRadius! as BorderRadius;
+    expect(radius.bottomLeft.x, greaterThan(0));
+    expect(radius.bottomRight.x, greaterThan(0));
+  });
 }

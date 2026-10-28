@@ -171,4 +171,49 @@ void main() {
       expect(taps, 1);
     });
   }
+
+  // Regression: the keyboard lift must not engage the edge-flush. A sheet that
+  // is lifted but still well below the top keeps its floating side inset.
+  testWidgets('keyboard lift keeps the modal sheet floating on its inset', (tester) async {
+    tester.view
+      ..devicePixelRatio = 1.0
+      ..physicalSize = screen;
+    addTearDown(
+      () => tester.view
+        ..resetViewInsets()
+        ..resetPhysicalSize()
+        ..resetDevicePixelRatio(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showBubblesSheet<void>(
+                context,
+                title: 'Add address',
+                builder: (_) => const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [TextField(), SizedBox(height: 200)],
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: keyboard);
+    await tester.pumpAndSettle();
+
+    final inset = const BubblesSheetThemeData().metrics.inset;
+    final surface = find.byType(Sheet);
+    expect(tester.getTopLeft(surface).dx, inset);
+    expect(tester.getSize(surface).width, screen.width - 2 * inset);
+  });
 }
