@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:bubbles_sheet/bubbles_sheet.dart';
 import 'package:bubbles_sheet_example/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -10,15 +11,92 @@ import 'package:integration_test/integration_test.dart';
 
 late IntegrationTestWidgetsFlutterBinding binding;
 
-/// Pumps until nothing is scheduled any more, capped at 3 s.
+/// Snapshot of everything that can still be moving, read without looking at
+/// tickers: a focused TextField's cursor fade is an AnimationController on
+/// iOS, so `transientCallbackCount` never reaches 0 while a field has focus.
+///
+/// - `rects`: the global rect of every [Material] and every [Sheet] on screen.
+///   Sheets, route transitions that slide, and page pushes all move one of
+///   them; the cursor and fades do not.
+/// - `routesBusy`: any [ModalRoute] above a Material whose transition or
+///   secondary (covered-by) animation is not completed/dismissed. This catches
+///   fade-only transitions that leave every rect untouched.
+/// - `scrolling`: any [Scrollable] whose position is not idle, so flings are
+///   measured to rest.
+typedef _Snapshot = ({List<Rect> rects, bool routesBusy, bool scrolling, double insets});
+
+_Snapshot _snapshot(WidgetTester tester) {
+  final rects = <Rect>[];
+  final routes = <ModalRoute<dynamic>>{};
+  for (final finder in [find.byType(Material), find.byType(Sheet)]) {
+    for (final element in finder.evaluate()) {
+      final box = element.renderObject;
+      if (box is RenderBox && box.hasSize && box.attached) {
+        rects.add(box.localToGlobal(Offset.zero) & box.size);
+      }
+      final route = ModalRoute.of(element);
+      if (route != null) routes.add(route);
+    }
+  }
+  bool running(Animation<double>? a) =>
+      a != null && a.status != AnimationStatus.completed && a.status != AnimationStatus.dismissed;
+  final routesBusy = routes.any((r) => running(r.animation) || running(r.secondaryAnimation));
+  final scrolling = find
+      .byType(Scrollable)
+      .evaluate()
+      .any(
+        (e) =>
+            (e as StatefulElement).state is ScrollableState &&
+            (e.state as ScrollableState).position.activity is! IdleScrollActivity,
+      );
+  return (rects: rects, routesBusy: routesBusy, scrolling: scrolling, insets: tester.view.viewInsets.bottom);
+}
+
+bool _sameRects(List<Rect> a, List<Rect> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if ((a[i].left - b[i].left).abs() > 0.5 ||
+        (a[i].top - b[i].top).abs() > 0.5 ||
+        (a[i].right - b[i].right).abs() > 0.5 ||
+        (a[i].bottom - b[i].bottom).abs() > 0.5) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// Pumps until the UI has stopped moving, capped at 3 s. Settled = for 3
+/// consecutive 16 ms frames: no route transition running, no Material/Sheet
+/// rect moved by more than 0.5 px, the view insets unchanged (the keyboard's
+/// inset animation is not a ticker either), and no Scrollable ballistic or
+/// drag activity. Deliberately ignores tickers and scheduled frames, which a
+/// focused field's cursor keeps alive forever.
 Future<void> settle(WidgetTester tester) async {
   final clock = Stopwatch()..start();
+  var previous = _snapshot(tester);
+  var stableFrames = 0;
   await tester.pump(const Duration(milliseconds: 16));
   while (clock.elapsedMilliseconds < 3000) {
-    final scheduler = SchedulerBinding.instance;
-    if (!scheduler.hasScheduledFrame && scheduler.transientCallbackCount == 0) break;
+    final now = _snapshot(tester);
+    final stable =
+        !now.routesBusy && !now.scrolling && now.insets == previous.insets && _sameRects(now.rects, previous.rects);
+    stableFrames = stable ? stableFrames + 1 : 0;
+    previous = now;
+    if (stableFrames >= 3) break;
     await tester.pump(const Duration(milliseconds: 16));
   }
+}
+
+/// Time from the end of the drag/fling gesture to settled, for the
+/// measurement currently running; `null` for measurements without a release.
+int? _releaseSettleMs;
+
+/// [settle], but also records the time as the `release_settle_ms` of the
+/// running [measure]. Call it right after the gesture's pointer-up.
+Future<void> settleAfterRelease(WidgetTester tester) async {
+  final clock = Stopwatch()..start();
+  await settle(tester);
+  _releaseSettleMs = clock.elapsedMilliseconds;
 }
 
 double _percentile(List<double> sorted, double p) {
@@ -34,6 +112,7 @@ Future<void> measure(String name, Future<void> Function() action) async {
   final timings = <FrameTiming>[];
   void collect(List<FrameTiming> batch) => timings.addAll(batch);
   SchedulerBinding.instance.addTimingsCallback(collect);
+  _releaseSettleMs = null;
   final wall = Stopwatch()..start();
   try {
     await action();
@@ -47,7 +126,7 @@ Future<void> measure(String name, Future<void> Function() action) async {
   final raster = timings.map((t) => t.rasterDuration.inMicroseconds / 1000).toList()..sort();
   double avg(List<double> v) => v.isEmpty ? 0 : v.reduce((a, b) => a + b) / v.length;
   final over = timings.where((t) => (t.buildDuration + t.rasterDuration).inMicroseconds > 16700).length;
-  final data = <String, Object>{
+  final data = <String, Object?>{
     'name': name,
     'frames': timings.length,
     'build_avg_ms': _round(avg(build)),
@@ -58,6 +137,7 @@ Future<void> measure(String name, Future<void> Function() action) async {
     'raster_max_ms': _round(raster.isEmpty ? 0 : raster.last),
     'frames_over_16_7ms': over,
     'wall_ms': wall.elapsedMilliseconds,
+    'release_settle_ms': _releaseSettleMs,
   };
   // The suite's output is read from the console, so print is the point.
   // ignore: avoid_print
@@ -109,7 +189,7 @@ double sheetTop(WidgetTester tester, Finder anchor) => tester.getTopLeft(anchor)
 Future<void> dragBy(WidgetTester tester, String name, Finder from, Offset by) async {
   await measure(name, () async {
     await tester.timedDrag(from, by, const Duration(milliseconds: 400));
-    await settle(tester);
+    await settleAfterRelease(tester);
   });
 }
 
@@ -149,7 +229,7 @@ void main() {
     final list = find.byType(ListView);
     await measure('three-detents/fling-large', () async {
       await tester.fling(list, const Offset(0, -500), 2500);
-      await settle(tester);
+      await settleAfterRelease(tester);
     });
     expect(find.text('Token 0'), findsNothing, reason: 'list should have scrolled');
     await tester.fling(list, const Offset(0, 800), 3000);
@@ -294,7 +374,7 @@ void main() {
     await openSheet(tester, 'fit-only', content);
     await measure('fit-only/dismiss-swipe', () async {
       await tester.fling(_close, const Offset(0, 500), 2500);
-      await settle(tester);
+      await settleAfterRelease(tester);
     });
     expect(content, findsNothing);
     expectResult('null');
@@ -308,7 +388,7 @@ void main() {
     await dragBy(tester, 'long-fit/drag-fit-to-large', _close, const Offset(0, -700));
     await measure('long-fit/scroll-to-end', () async {
       await tester.fling(find.byType(SingleChildScrollView).last, const Offset(0, -2000), 4000);
-      await settle(tester);
+      await settleAfterRelease(tester);
     });
     expect(find.byKey(const ValueKey('long-fit-row-29')), findsOneWidget, reason: 'last row should be reachable');
     await closeSheet(tester, 'long-fit', content);
@@ -322,7 +402,7 @@ void main() {
     final topAtLarge = sheetTop(tester, _close);
     await measure('large-list/fling', () async {
       await tester.fling(list, const Offset(0, -600), 3000);
-      await settle(tester);
+      await settleAfterRelease(tester);
     });
     expect(find.byKey(const ValueKey('large-list-row-0')), findsNothing);
     await tester.fling(list, const Offset(0, 3000), 6000);
