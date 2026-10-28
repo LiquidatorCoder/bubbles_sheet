@@ -169,14 +169,14 @@ class BubblesPagedSheetCircleButton extends StatelessWidget {
 ///
 /// The [SheetOffsetDrivenAnimation] is created ONCE in `initState` — never in
 /// the build closure. The viewport rebuilds on every keyboard-inset change;
-/// recreating the animation on those frames makes `AnimatedBuilder`'s
-/// `didUpdateWidget` swap listeners onto the [SheetController]. Once the route's
-/// `whenComplete` has disposed that controller (which happens as the sheet pops
-/// with the keyboard still collapsing), the swap calls `addListener` on a
-/// disposed controller and throws "A SheetController was used after being
-/// disposed.", cascading into a `_dependents.isEmpty` crash. Caching the
-/// animation in State keeps `didUpdateWidget` seeing the same instance, so no
-/// listener swap fires during teardown.
+/// recreating the animation on those frames would make `AnimatedBuilder`'s
+/// `didUpdateWidget` unsubscribe from the old animation and subscribe to a new
+/// one on the [SheetController] every time, for no benefit. Caching it in State
+/// keeps one subscription for the sheet's life.
+///
+/// The [SheetController] you pass must outlive this viewport's subtree: dispose
+/// it from your route's `dispose` (after the sheet has unmounted), not when the
+/// route's future completes at pop, while the sheet is still on screen exiting.
 class BubblesPagedSheetViewport extends StatefulWidget {
   const BubblesPagedSheetViewport({required this.controller, required this.child, super.key});
 
@@ -240,9 +240,8 @@ class BubblesPagedSheetSurface extends StatefulWidget {
 class _BubblesPagedSheetSurfaceState extends State<BubblesPagedSheetSurface> {
   // Built once in initState. SheetDecorationBuilder rebuilds this surface on
   // every layout tick; a fresh SheetOffsetDrivenAnimation / Listenable.merge per
-  // build would make AnimatedBuilder swap listeners onto the SheetController and
-  // throw "used after disposed" during a teardown relayout. (See
-  // BubblesPagedSheetViewport for the full explanation.)
+  // build would make AnimatedBuilder resubscribe to the SheetController on every
+  // one of them. (See BubblesPagedSheetViewport.)
   late final SheetOffsetDrivenAnimation _flushAnim;
   late final Listenable _repaint;
 
